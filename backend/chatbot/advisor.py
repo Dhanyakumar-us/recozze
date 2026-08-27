@@ -130,12 +130,15 @@ def _call_groq_ai(api_key: str, query: str, context_str: str) -> Optional[str]:
         )
         
         candidate_models = [
-            "groq/compound-mini",
             "openai/gpt-oss-120b",
             "qwen/qwen3.6-27b",
+            "llama-3.3-70b-versatile",
+            "groq/compound-mini",
             "groq/compound"
         ]
         
+        trimmed_context = context_str[:2500] if len(context_str) > 2500 else context_str
+
         for model_name in candidate_models:
             try:
                 response = client.chat.completions.create(
@@ -146,7 +149,7 @@ def _call_groq_ai(api_key: str, query: str, context_str: str) -> Optional[str]:
                             "content": (
                                 "You are RECO AI, an elite hardware engineering assistant and laptop buying advisor. "
                                 "Answer user questions accurately using markdown, bold headers, bullet points, and emojis. "
-                                f"Here is real-time laptop catalog context:\n{context_str}"
+                                f"Here is real-time laptop catalog context:\n{trimmed_context}"
                             )
                         },
                         {"role": "user", "content": query}
