@@ -130,10 +130,10 @@ def _call_groq_ai(api_key: str, query: str, context_str: str) -> str:
     )
     
     candidate_models = [
-        "groq/compound",
-        "openai/gpt-oss-120b",
-        "qwen/qwen3.6-27b",
-        "groq/compound-mini"
+        "llama-3.3-70b-versatile",
+        "llama3-70b-8192",
+        "mixtral-8x7b-32768",
+        "llama-3.1-8b-instant"
     ]
     
     last_err = None
