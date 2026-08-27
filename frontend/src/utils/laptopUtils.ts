@@ -57,3 +57,26 @@ export function getLaptopBatteryHours(laptop: Laptop): number {
 export function getLaptopMatchScore(laptop: Laptop): number {
   return laptop.calculatedMatchPct || laptop.realtimeScore || 92;
 }
+
+export function getLaptopMsrpPrice(laptop: Laptop): number {
+  return laptop.msrpInr || (laptop as any).price_inr || laptop.currentBestPriceInr || 0;
+}
+
+export function getLaptopStudentDiscountPct(laptop: Laptop): number {
+  const msrp = getLaptopMsrpPrice(laptop);
+  const studentPrice = laptop.studentPriceInr || (laptop as any).unidays_price_inr;
+  if (!msrp || !studentPrice || studentPrice >= msrp) return 0;
+  return Math.round(((msrp - studentPrice) / msrp) * 100);
+}
+
+export function getLaptopStudentSavingsInr(laptop: Laptop): number {
+  const msrp = getLaptopMsrpPrice(laptop);
+  const studentPrice = laptop.studentPriceInr || (laptop as any).unidays_price_inr;
+  if (!msrp || !studentPrice || studentPrice >= msrp) return 0;
+  return msrp - studentPrice;
+}
+
+export function getLaptopStudentCashbackInr(laptop: Laptop): number {
+  return (laptop as any).student_cashback_inr || (laptop as any).studentCashbackInr || 0;
+}
+

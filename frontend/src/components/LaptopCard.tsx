@@ -10,6 +10,9 @@ import {
   getLaptopRam,
   getLaptopSsd,
   getLaptopRefreshHz,
+  getLaptopMsrpPrice,
+  getLaptopStudentDiscountPct,
+  getLaptopStudentCashbackInr,
 } from '../utils/laptopUtils';
 
 interface LaptopCardProps {
@@ -45,10 +48,10 @@ export const LaptopCard: React.FC<LaptopCardProps> = ({
           <span className="px-3 py-1 rounded-full bg-slate-900/80 backdrop-blur-md text-white text-[10px] font-bold tracking-wider uppercase">
             {laptop.brand}
           </span>
-          {unidaysActive && laptop.studentPriceInr && (
+          {unidaysActive && getLaptopStudentDiscountPct(laptop) > 0 && (
             <span className="px-2.5 py-1 rounded-full bg-emerald-600/90 backdrop-blur-md text-white text-[10px] font-bold flex items-center space-x-1">
               <GraduationCap className="w-3 h-3" />
-              <span>UNiDAYS</span>
+              <span>SAVE {getLaptopStudentDiscountPct(laptop)}%</span>
             </span>
           )}
         </div>
@@ -97,10 +100,27 @@ export const LaptopCard: React.FC<LaptopCardProps> = ({
 
         <div className="flex items-center justify-between pt-2">
           <div>
-            <span className="text-xs text-slate-400 font-medium">Price</span>
-            <p className="text-lg font-extrabold text-slate-900 dark:text-white font-display">
-              ₹{displayPrice.toLocaleString('en-IN')}
+            <div className="flex items-center space-x-2">
+              <span className="text-xs text-slate-400 font-medium">Price</span>
+              {unidaysActive && getLaptopMsrpPrice(laptop) > displayPrice && (
+                <span className="text-xs text-slate-400 line-through">
+                  ₹{getLaptopMsrpPrice(laptop).toLocaleString('en-IN')}
+                </span>
+              )}
+            </div>
+            <p className="text-lg font-extrabold text-slate-900 dark:text-white font-display flex items-center space-x-2">
+              <span>₹{displayPrice.toLocaleString('en-IN')}</span>
+              {unidaysActive && getLaptopStudentDiscountPct(laptop) > 0 && (
+                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.5 rounded">
+                  {getLaptopStudentDiscountPct(laptop)}% OFF
+                </span>
+              )}
             </p>
+            {unidaysActive && getLaptopStudentCashbackInr(laptop) > 0 && (
+              <p className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                + ₹{getLaptopStudentCashbackInr(laptop).toLocaleString('en-IN')} Cashback
+              </p>
+            )}
           </div>
 
           <div className="inline-flex items-center space-x-1 text-xs font-bold text-blue-600 dark:text-blue-400 group-hover:translate-x-1 transition-transform">
