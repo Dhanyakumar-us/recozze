@@ -130,10 +130,10 @@ def _call_groq_ai(api_key: str, query: str, context_str: str) -> Optional[str]:
         )
         
         candidate_models = [
-            "llama-3.3-70b-versatile",
-            "llama3-70b-8192",
-            "mixtral-8x7b-32768",
-            "llama-3.1-8b-instant"
+            "groq/compound-mini",
+            "openai/gpt-oss-120b",
+            "qwen/qwen3.6-27b",
+            "groq/compound"
         ]
         
         for model_name in candidate_models:
@@ -151,7 +151,7 @@ def _call_groq_ai(api_key: str, query: str, context_str: str) -> Optional[str]:
                         },
                         {"role": "user", "content": query}
                     ],
-                    max_tokens=500
+                    max_tokens=400
                 )
                 if response.choices and response.choices[0].message.content:
                     return response.choices[0].message.content
@@ -174,6 +174,12 @@ def is_valid_key(key: str) -> bool:
 
 def generate_chat_response(query: str, active_laptops: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Parses user query and returns contextual hardware AI response."""
+    from dotenv import load_dotenv, find_dotenv
+    load_dotenv(find_dotenv(), override=True)
+    env_path = os.path.join(os.path.dirname(__file__), "..", ".env")
+    if os.path.exists(env_path):
+        load_dotenv(env_path, override=True)
+    
     groq_key = os.getenv("GROQ_API_KEY", "").strip()
     gemini_key = os.getenv("GEMINI_API_KEY", "").strip()
     openai_key = os.getenv("OPENAI_API_KEY", "").strip()
@@ -197,9 +203,9 @@ def generate_chat_response(query: str, active_laptops: List[Dict[str, Any]]) -> 
         if ai_response:
             return {
                 "query": query,
-                "topic": "⚡ Groq Llama-3.3 AI Advisor (Ultra-Fast)",
+                "topic": "⚡ Groq Live AI Advisor (Ultra-Fast)",
                 "response": ai_response,
-                "api_connected": "Groq Llama-3.3 API",
+                "api_connected": "Groq AI API",
                 "suggested_prompts": [
                     "Which laptop has the best cooling thermal design?",
                     "Compare top 2 models for local LLM AI inference",
