@@ -184,16 +184,28 @@ def generate_chat_response(query: str, active_laptops: List[Dict[str, Any]]) -> 
     gemini_key = os.getenv("GEMINI_API_KEY", "").strip()
     openai_key = os.getenv("OPENAI_API_KEY", "").strip()
     
-    # Prepare top 5 laptops context string for RAG
+    # Prepare complete laptop catalog context string for RAG
     laptop_summaries = []
-    for l in active_laptops[:5]:
+    for l in active_laptops:
         t = l.get("thermal", {})
         b = l.get("benchmarks", {})
+        d = l.get("display", {})
+        rec = l.get("buy_recommendation", {})
         price = l.get("effective_price_inr") or l.get("unidays_price_inr") or l.get("price_inr", 0)
+        
+        display_str = f"{d.get('size_inches', '')}\" {d.get('resolution', '')} {d.get('refresh_rate_hz', '')}Hz {d.get('panel_type', '')}"
+        thermal_str = f"{t.get('fan_count', 2)} Fans, {t.get('heat_pipe_count', 0)} Pipes, VaporChamber={t.get('vapor_chamber', False)}, LiquidMetal={t.get('liquid_metal', False)}, Noise={t.get('noise_level_db')}dB, PeakTemp={t.get('peak_surface_temp_c')}°C"
+        benchmark_str = f"CinebenchR23={b.get('cinebench_r23_multi')}, TimeSpyGPU={b.get('time_spy_gpu')}, Geekbench6={b.get('geekbench_6_multi')}"
+        
         laptop_summaries.append(
-            f"- {l['name']} ({l['brand']}): GPU {l['gpu']} ({l['tgp_watts']}W TGP), CPU {l['cpu']}, {l['ram_gb']}GB RAM, "
-            f"Price: ₹{price:,}, Cinebench R23: {b.get('cinebench_r23_multi', 'N/A')}, "
-            f"Cooling: {t.get('fan_count', 2)} fans ({t.get('noise_level_db', 'N/A')}dB, {t.get('peak_surface_temp_c', 'N/A')}°C)"
+            f"• [{l['id']}] {l['name']} ({l['brand']})\n"
+            f"  - Price: ₹{price:,} (MSRP: ₹{l.get('price_inr', 0):,}, UNiDAYS Student Price: ₹{l.get('unidays_price_inr', 0):,}, Cashback: ₹{l.get('student_cashback_inr', 0):,})\n"
+            f"  - Core Specs: CPU {l['cpu']} | GPU {l['gpu']} ({l['tgp_watts']}W TGP) | RAM {l['ram_gb']}GB {l.get('ram_type', 'DDR5')} | Storage {l.get('storage_gb', 1024)}GB {l.get('storage_type', 'SSD')}\n"
+            f"  - Display: {display_str} ({d.get('brightness_nits', 300)} nits, {d.get('color_gamut', '')})\n"
+            f"  - Battery & Portability: {l.get('battery_wh', 80)}Wh ({l.get('battery_hours_real_world', 5)}h runtime) | Weight: {l.get('weight_kg', 2.0)}kg\n"
+            f"  - Thermal Cooling: {thermal_str}\n"
+            f"  - Performance Scores: {benchmark_str}\n"
+            f"  - Recommendation Status: {rec.get('status', 'BUY')} ({rec.get('reasoning', '')})\n"
         )
     context_str = "\n".join(laptop_summaries)
 
