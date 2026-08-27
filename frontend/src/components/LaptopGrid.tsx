@@ -15,6 +15,7 @@ interface LaptopGridProps {
   pinnedIds: string[];
   onPinLaptop: (id: string) => void;
   onSelectLaptop: (laptop: Laptop) => void;
+  onAnalyzePower?: (laptop: Laptop) => void;
 }
 
 export const LaptopGrid: React.FC<LaptopGridProps> = ({
@@ -25,6 +26,7 @@ export const LaptopGrid: React.FC<LaptopGridProps> = ({
   pinnedIds,
   onPinLaptop,
   onSelectLaptop,
+  onAnalyzePower,
 }) => {
   const [sortBy, setSortBy] = useState<'match' | 'price_asc' | 'price_desc' | 'power'>('match');
 
@@ -96,6 +98,7 @@ export const LaptopGrid: React.FC<LaptopGridProps> = ({
               isPinned={pinnedIds.includes(laptop.id)}
               onPin={onPinLaptop}
               onSelect={onSelectLaptop}
+              onAnalyzePower={onAnalyzePower}
             />
           ))}
         </div>

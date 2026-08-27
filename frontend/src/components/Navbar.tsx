@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Bot, Sparkles, GraduationCap, Sun, Moon } from 'lucide-react';
 import type { UserPreferences } from '../types/laptop';
 
-export type PageTab = 'home' | 'catalog' | 'compare' | 'match' | 'trends';
+export type PageTab = 'home' | 'catalog' | 'compare' | 'match' | 'power';
 
 interface NavbarProps {
   preferences: UserPreferences;
@@ -101,6 +101,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                 {pinnedCount}
               </span>
             )}
+          </button>
+          <button
+            onClick={() => onSelectTab('power')}
+            className={`px-4 py-1.5 text-xs font-semibold rounded-full transition-all duration-200 flex items-center space-x-1.5 ${
+              activeTab === 'power'
+                ? 'bg-cyan-500 text-slate-950 font-bold shadow-xs'
+                : 'text-slate-600 dark:text-slate-300 hover:text-cyan-400'
+            }`}
+          >
+            <Sparkles className="w-3 h-3 text-cyan-400 fill-cyan-400" />
+            <span>Power Dashboard</span>
           </button>
           <button
             onClick={() => onSelectTab('match')}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowRight, Scale, GraduationCap } from 'lucide-react';
+import { ArrowRight, Scale, GraduationCap, Zap } from 'lucide-react';
 import type { Laptop } from '../types/laptop';
 import {
   getLaptopImage,
@@ -21,6 +21,7 @@ interface LaptopCardProps {
   isPinned: boolean;
   onPin: (id: string) => void;
   onSelect: (laptop: Laptop) => void;
+  onAnalyzePower?: (laptop: Laptop) => void;
 }
 
 export const LaptopCard: React.FC<LaptopCardProps> = ({
@@ -29,6 +30,7 @@ export const LaptopCard: React.FC<LaptopCardProps> = ({
   isPinned,
   onPin,
   onSelect,
+  onAnalyzePower,
 }) => {
   const displayPrice = getLaptopPrice(laptop, unidaysActive);
 
@@ -56,20 +58,34 @@ export const LaptopCard: React.FC<LaptopCardProps> = ({
           )}
         </div>
 
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onPin(laptop.id);
-          }}
-          title={isPinned ? 'Remove from Compare' : 'Pin to Compare'}
-          className={`absolute top-3 right-3 p-2 rounded-full backdrop-blur-md transition-all z-10 cursor-pointer ${
-            isPinned
-              ? 'bg-blue-600 text-white shadow-md'
-              : 'bg-white/80 dark:bg-slate-900/80 text-slate-600 dark:text-slate-300 opacity-0 group-hover:opacity-100 hover:bg-white dark:hover:bg-slate-800'
-          }`}
-        >
-          <Scale className="w-4 h-4" />
-        </button>
+        <div className="absolute top-3 right-3 flex items-center space-x-1.5 z-10">
+          {onAnalyzePower && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onAnalyzePower(laptop);
+              }}
+              title="Analyze Power Dashboard"
+              className="p-2 rounded-full bg-slate-900/80 hover:bg-cyan-500 text-cyan-300 hover:text-slate-950 backdrop-blur-md transition-all cursor-pointer opacity-0 group-hover:opacity-100"
+            >
+              <Zap className="w-4 h-4 fill-current" />
+            </button>
+          )}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onPin(laptop.id);
+            }}
+            title={isPinned ? 'Remove from Compare' : 'Pin to Compare'}
+            className={`p-2 rounded-full backdrop-blur-md transition-all cursor-pointer ${
+              isPinned
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'bg-white/80 dark:bg-slate-900/80 text-slate-600 dark:text-slate-300 opacity-0 group-hover:opacity-100 hover:bg-white dark:hover:bg-slate-800'
+            }`}
+          >
+            <Scale className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       <div className="p-6 space-y-4 flex-1 flex flex-col justify-between">

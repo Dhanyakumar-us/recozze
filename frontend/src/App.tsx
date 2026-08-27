@@ -13,6 +13,7 @@ import { MarketTrendsChart } from './components/MarketTrendsChart';
 import { ChatbotDrawer } from './components/ChatbotDrawer';
 import { CommandPalette } from './components/CommandPalette';
 import { Toast } from './components/Toast';
+import { PowerDashboard } from './components/powerDashboard/PowerDashboard';
 
 import type { Laptop, UserPreferences, MarketTrendsData } from './types/laptop';
 import { fetchLaptops, fetchMarketTrends, compareLaptopsApi, connectRealtimeWebSocket } from './services/api';
@@ -20,6 +21,7 @@ import { fetchLaptops, fetchMarketTrends, compareLaptopsApi, connectRealtimeWebS
 export function App() {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [activeTab, setActiveTab] = useState<PageTab>('home');
+  const [powerLaptop, setPowerLaptop] = useState<Laptop | null>(null);
 
   useEffect(() => {
     if (theme === 'dark') {
@@ -215,6 +217,10 @@ export function App() {
               pinnedIds={pinnedIds}
               onPinLaptop={handleTogglePin}
               onSelectLaptop={setSelectedLaptop}
+              onAnalyzePower={(lap) => {
+                setPowerLaptop(lap);
+                setActiveTab('power');
+              }}
             />
           </>
         )}
@@ -229,6 +235,10 @@ export function App() {
               pinnedIds={pinnedIds}
               onPinLaptop={handleTogglePin}
               onSelectLaptop={setSelectedLaptop}
+              onAnalyzePower={(lap) => {
+                setPowerLaptop(lap);
+                setActiveTab('power');
+              }}
             />
           </div>
         )}
@@ -243,6 +253,14 @@ export function App() {
               onPinLaptop={handleTogglePin}
             />
           </div>
+        )}
+
+        {activeTab === 'power' && laptops.length > 0 && (
+          <PowerDashboard
+            selectedLaptop={powerLaptop || laptops[0]}
+            allLaptops={laptops}
+            onSelectLaptop={(lap) => setPowerLaptop(lap)}
+          />
         )}
 
         {activeTab === 'compare' && (
@@ -264,6 +282,10 @@ export function App() {
         onClose={() => setSelectedLaptop(null)}
         onPin={handleTogglePin}
         isPinned={selectedLaptop ? pinnedIds.includes(selectedLaptop.id) : false}
+        onAnalyzePower={(lap) => {
+          setPowerLaptop(lap);
+          setActiveTab('power');
+        }}
       />
 
       {/* Compare Matrix Drawer */}

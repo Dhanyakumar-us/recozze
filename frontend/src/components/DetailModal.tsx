@@ -20,6 +20,7 @@ interface DetailModalProps {
   onClose: () => void;
   onPin: (id: string) => void;
   isPinned: boolean;
+  onAnalyzePower?: (laptop: Laptop) => void;
 }
 
 export const DetailModal: React.FC<DetailModalProps> = ({
@@ -28,6 +29,7 @@ export const DetailModal: React.FC<DetailModalProps> = ({
   onClose,
   onPin,
   isPinned,
+  onAnalyzePower,
 }) => {
   if (!laptop) return null;
 
@@ -101,6 +103,18 @@ export const DetailModal: React.FC<DetailModalProps> = ({
               </div>
 
               <div className="pt-2 flex flex-wrap gap-3">
+                {onAnalyzePower && (
+                  <button
+                    onClick={() => {
+                      onClose();
+                      onAnalyzePower(laptop);
+                    }}
+                    className="px-6 py-3 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-xs hover:scale-105 transition-all shadow-md flex items-center space-x-2 cursor-pointer"
+                  >
+                    <Zap className="w-4 h-4 text-cyan-200 fill-cyan-300" />
+                    <span>Analyze Performance →</span>
+                  </button>
+                )}
                 <a
                   href={laptop.retailerPrices?.amazonUrl || '#'}
                   target="_blank"
