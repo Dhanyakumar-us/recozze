@@ -1,256 +1,161 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, Scale, ExternalLink, Trash2, Trophy, ArrowRight } from 'lucide-react';
+import { X, Scale, ArrowRight } from 'lucide-react';
 import type { Laptop } from '../types/laptop';
-import { formatPrice } from '../services/api';
+import {
+  getLaptopImage,
+  getLaptopPrice,
+  getLaptopCpu,
+  getLaptopGpu,
+  getLaptopTgp,
+  getLaptopRam,
+  getLaptopSsd,
+  getLaptopWeight,
+} from '../utils/laptopUtils';
 
 interface CompareMatrixProps {
-  laptops: Laptop[];
-  unidaysActive: boolean;
-  onRemovePin: (id: string) => void;
-  onClearAll: () => void;
+  compareLaptops: Laptop[];
+  isOpen: boolean;
   onClose: () => void;
+  onRemovePin: (id: string) => void;
 }
 
 export const CompareMatrix: React.FC<CompareMatrixProps> = ({
-  laptops,
-  unidaysActive,
-  onRemovePin,
-  onClearAll,
+  compareLaptops,
+  isOpen,
   onClose,
+  onRemovePin,
 }) => {
-  if (laptops.length === 0) return null;
-
-  const bestGpuLaptop = [...laptops].sort((a, b) => b.specs.tgpWatts - a.specs.tgpWatts)[0];
-  const bestBatteryLaptop = [...laptops].sort((a, b) => b.specs.batteryHours - a.specs.batteryHours)[0];
-  const bestValueLaptop = [...laptops].sort((a, b) => {
-    const pA = unidaysActive ? a.studentPriceInr : a.currentBestPriceInr;
-    const pB = unidaysActive ? b.studentPriceInr : b.currentBestPriceInr;
-    return pA - pB;
-  })[0];
-  const bestStudentLaptop = [...laptops].sort((a, b) => b.studentBenefits.cashbackInr - a.studentBenefits.cashbackInr)[0];
+  if (!isOpen) return null;
 
   return (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md overflow-y-auto">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          className="relative w-full max-w-6xl bg-[#0A0A0A] border border-white/10 rounded-3xl overflow-hidden shadow-2xl my-8 text-white"
-        >
-          {/* Header */}
-          <div className="p-6 border-b border-white/10 flex items-center justify-between bg-[#050505]">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-2xl bg-blue-500/10 text-blue-400 border border-blue-500/30">
-                <Scale className="w-5 h-5" />
-              </div>
-              <div>
-                <h2 className="text-2xl font-black text-white">CHOOSE YOUR WINNER.</h2>
-                <p className="text-xs text-slate-400">Comparing {laptops.length} selected models side-by-side</p>
-              </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto bg-slate-950/80 backdrop-blur-md">
+      <div className="relative w-full max-w-6xl bg-white dark:bg-slate-900 rounded-3xl overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-800 my-8 flex flex-col max-h-[90vh]">
+        <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-10">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400">
+              <Scale className="w-5 h-5" />
             </div>
-
-            <div className="flex items-center gap-3">
-              <button
-                onClick={onClearAll}
-                className="text-xs font-mono font-bold text-slate-400 hover:text-rose-400 transition-colors flex items-center gap-1 cursor-pointer"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Clear All</span>
-              </button>
-              <button
-                onClick={onClose}
-                className="p-2 rounded-full bg-[#101010] text-slate-400 hover:text-white transition-colors border border-white/10 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
+            <div>
+              <span className="text-[10px] font-extrabold tracking-widest text-slate-400 uppercase">
+                SIDE-BY-SIDE MATRIX
+              </span>
+              <h2 className="text-xl font-bold font-display text-slate-900 dark:text-white">
+                COMPARE LAPTOPS ({compareLaptops.length})
+              </h2>
             </div>
           </div>
 
-          {/* Table */}
-          <div className="p-6 overflow-x-auto max-h-[75vh] space-y-8">
-            <table className="w-full text-left border-collapse text-xs font-mono">
-              <thead>
-                <tr className="border-b border-white/10">
-                  <th className="p-3 w-44 text-slate-400 font-bold uppercase">Specifications</th>
-                  {laptops.map((laptop) => (
-                    <th key={laptop.id} className="p-3 min-w-[240px] align-top">
-                      <div className="relative p-4 rounded-2xl bg-[#101010] border border-white/10 space-y-3">
-                        <button
-                          onClick={() => onRemovePin(laptop.id)}
-                          className="absolute top-2 right-2 p-1 rounded-full bg-[#050505] text-slate-400 hover:text-rose-400"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-full text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
 
-                        <img src={laptop.image} alt={laptop.name} className="h-28 w-full object-contain rounded-xl" />
-                        
-                        <div>
-                          <span className="text-[10px] uppercase font-bold text-blue-400 block">{laptop.brand}</span>
-                          <h4 className="font-bold text-sm text-white line-clamp-1">{laptop.name}</h4>
-                        </div>
+        <div className="p-8 overflow-y-auto">
+          {compareLaptops.length === 0 ? (
+            <div className="text-center py-16 text-slate-500">
+              No laptops selected for comparison. Pin laptops using the scale icon on cards.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {compareLaptops.map((laptop) => (
+                <div
+                  key={laptop.id}
+                  className="rounded-3xl border border-slate-200 dark:border-slate-800 p-6 space-y-6 flex flex-col justify-between bg-slate-50/50 dark:bg-slate-800/40 relative"
+                >
+                  <button
+                    onClick={() => onRemovePin(laptop.id)}
+                    className="absolute top-4 right-4 p-1.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
 
-                        <div className="text-base font-extrabold text-white">
-                          {formatPrice(unidaysActive ? laptop.studentPriceInr : laptop.currentBestPriceInr)}
-                        </div>
+                  <div className="space-y-4">
+                    <div className="h-44 rounded-2xl overflow-hidden bg-slate-900">
+                      <img
+                        src={getLaptopImage(laptop)}
+                        alt={laptop.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
 
-                        {/* Winner Indicators */}
-                        <div className="space-y-1 pt-1">
-                          {bestGpuLaptop?.id === laptop.id && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/30">
-                              <Trophy className="w-3 h-3" /> BEST PERFORMANCE ✓
-                            </span>
-                          )}
-                          {bestValueLaptop?.id === laptop.id && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
-                              <Trophy className="w-3 h-3" /> BEST VALUE ✓
-                            </span>
-                          )}
-                          {bestBatteryLaptop?.id === laptop.id && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                              <Trophy className="w-3 h-3" /> BEST BATTERY ✓
-                            </span>
-                          )}
-                          {bestStudentLaptop?.id === laptop.id && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/10 text-purple-400 border border-purple-500/30">
-                              <Trophy className="w-3 h-3" /> BEST FOR STUDENTS ✓
-                            </span>
-                          )}
-                        </div>
+                    <div>
+                      <span className="text-[10px] font-extrabold tracking-widest text-blue-600 dark:text-blue-400 uppercase">
+                        {laptop.brand}
+                      </span>
+                      <h3 className="text-lg font-bold font-display text-slate-900 dark:text-white line-clamp-1">
+                        {laptop.name}
+                      </h3>
+                      <p className="text-xl font-black text-slate-900 dark:text-white mt-1">
+                        ₹{getLaptopPrice(laptop).toLocaleString('en-IN')}
+                      </p>
+                    </div>
+
+                    <div className="space-y-2 text-xs text-slate-600 dark:text-slate-400 pt-4 border-t border-slate-200 dark:border-slate-800">
+                      <div className="flex justify-between">
+                        <span className="font-semibold text-slate-400">GPU & TGP</span>
+                        <span className="font-bold text-slate-900 dark:text-white">{getLaptopGpu(laptop)} ({getLaptopTgp(laptop)}W)</span>
                       </div>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {/* Score */}
-                <tr>
-                  <td className="p-3 font-bold text-slate-400">RecoZee Score</td>
-                  {laptops.map((l) => (
-                    <td key={l.id} className="p-3 font-bold text-blue-400">{l.calculatedMatchPct || 94}% Match</td>
-                  ))}
-                </tr>
-                {/* CPU */}
-                <tr>
-                  <td className="p-3 font-bold text-slate-400">CPU</td>
-                  {laptops.map((l) => (
-                    <td key={l.id} className="p-3 text-slate-200">{l.specs.cpu}</td>
-                  ))}
-                </tr>
-                {/* GPU */}
-                <tr>
-                  <td className="p-3 font-bold text-slate-400">GPU & TGP</td>
-                  {laptops.map((l) => (
-                    <td key={l.id} className="p-3 font-bold text-blue-400">{l.specs.gpu} ({l.specs.tgpWatts}W)</td>
-                  ))}
-                </tr>
-                {/* RAM */}
-                <tr>
-                  <td className="p-3 font-bold text-slate-400">RAM</td>
-                  {laptops.map((l) => (
-                    <td key={l.id} className="p-3 text-slate-200">{l.specs.ramGb}GB ({l.specs.ramType})</td>
-                  ))}
-                </tr>
-                {/* SSD */}
-                <tr>
-                  <td className="p-3 font-bold text-slate-400">Storage</td>
-                  {laptops.map((l) => (
-                    <td key={l.id} className="p-3 text-slate-200">{l.specs.ssdStorageGb}GB SSD</td>
-                  ))}
-                </tr>
-                {/* Display */}
-                <tr>
-                  <td className="p-3 font-bold text-slate-400">Display & Refresh</td>
-                  {laptops.map((l) => (
-                    <td key={l.id} className="p-3 text-slate-200">{l.specs.display.size_inches}" ({l.specs.display.refresh_rate_hz}Hz)</td>
-                  ))}
-                </tr>
-                {/* Battery */}
-                <tr>
-                  <td className="p-3 font-bold text-slate-400">Battery Life</td>
-                  {laptops.map((l) => (
-                    <td key={l.id} className="p-3 text-emerald-400 font-bold">{l.specs.batteryHours} hrs</td>
-                  ))}
-                </tr>
-                {/* Weight */}
-                <tr>
-                  <td className="p-3 font-bold text-slate-400">Weight</td>
-                  {laptops.map((l) => (
-                    <td key={l.id} className="p-3 text-slate-200">{l.specs.weightKg} kg</td>
-                  ))}
-                </tr>
-                {/* Link */}
-                <tr>
-                  <td className="p-3 font-bold text-slate-400">Action</td>
-                  {laptops.map((l) => (
-                    <td key={l.id} className="p-3">
-                      <a
-                        href={l.retailerPrices.officialUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white transition-all"
-                      >
-                        <span>Store Link</span>
-                        <ExternalLink className="w-3 h-3" />
-                      </a>
-                    </td>
-                  ))}
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </motion.div>
+                      <div className="flex justify-between">
+                        <span className="font-semibold text-slate-400">CPU</span>
+                        <span className="font-bold text-slate-900 dark:text-white">{getLaptopCpu(laptop)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="font-semibold text-slate-400">RAM</span>
+                        <span className="font-bold text-slate-900 dark:text-white">{getLaptopRam(laptop)} GB DDR5</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="font-semibold text-slate-400">Storage</span>
+                        <span className="font-bold text-slate-900 dark:text-white">{getLaptopSsd(laptop)} GB SSD</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="font-semibold text-slate-400">Weight</span>
+                        <span className="font-bold text-slate-900 dark:text-white">{getLaptopWeight(laptop)} KG</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <a
+                    href={laptop.retailerPrices?.amazonUrl || '#'}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="w-full py-3 rounded-full bg-blue-600 text-white font-bold text-xs text-center hover:bg-blue-700 transition-colors inline-block"
+                  >
+                    View Retailer Offer →
+                  </a>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
-    </AnimatePresence>
+    </div>
   );
 };
 
 interface FloatingCompareBarProps {
   pinnedCount: number;
-  onExpand: () => void;
-  onClear: () => void;
+  onOpenCompare: () => void;
 }
 
 export const FloatingCompareBar: React.FC<FloatingCompareBarProps> = ({
   pinnedCount,
-  onExpand,
-  onClear,
+  onOpenCompare,
 }) => {
   if (pinnedCount === 0) return null;
 
   return (
-    <motion.div
-      initial={{ y: 50, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      exit={{ y: 50, opacity: 0 }}
-      className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-[#0A0A0A]/95 backdrop-blur-xl rounded-full px-6 py-3 border border-white/10 shadow-2xl flex items-center gap-4"
-    >
-      <div className="flex items-center gap-2">
-        <span className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white font-bold text-xs font-mono">
-          {pinnedCount}
-        </span>
-        <span className="text-xs font-bold text-white font-mono uppercase tracking-wider">
-          COMPARE ({pinnedCount})
-        </span>
-      </div>
-
-      <div className="h-4 w-px bg-white/10" />
-
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40">
       <button
-        onClick={onExpand}
-        className="flex items-center gap-1.5 px-5 py-2 rounded-full text-xs font-extrabold bg-blue-600 hover:bg-blue-500 text-white transition-all shadow-md shadow-blue-600/30 cursor-pointer"
+        onClick={onOpenCompare}
+        className="px-6 py-3.5 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-extrabold text-xs shadow-2xl hover:scale-105 transition-transform flex items-center space-x-3 cursor-pointer border border-slate-700/50"
       >
-        <span>COMPARE NOW</span>
-        <ArrowRight className="w-3.5 h-3.5" />
+        <Scale className="w-4 h-4 text-blue-400 dark:text-blue-600" />
+        <span>COMPARE ({pinnedCount} PINNED)</span>
+        <ArrowRight className="w-4 h-4" />
       </button>
-
-      <button
-        onClick={onClear}
-        className="text-xs font-mono text-slate-400 hover:text-rose-400 transition-colors cursor-pointer"
-      >
-        Clear all
-      </button>
-    </motion.div>
+    </div>
   );
 };

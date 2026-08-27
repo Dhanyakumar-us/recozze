@@ -1,142 +1,114 @@
 import React from 'react';
-import { motion } from 'framer-motion';
-import { Heart, Plus, Check, ExternalLink } from 'lucide-react';
-import type { Laptop, CurrencyType } from '../types/laptop';
-import { formatPrice } from '../services/api';
+import { ArrowRight, Scale, GraduationCap } from 'lucide-react';
+import type { Laptop } from '../types/laptop';
+import {
+  getLaptopImage,
+  getLaptopPrice,
+  getLaptopCpu,
+  getLaptopGpu,
+  getLaptopTgp,
+  getLaptopRam,
+  getLaptopSsd,
+  getLaptopRefreshHz,
+} from '../utils/laptopUtils';
 
 interface LaptopCardProps {
   laptop: Laptop;
-  index: number;
   unidaysActive: boolean;
-  currency?: CurrencyType;
-  currencyRates?: Record<string, number>;
   isPinned: boolean;
-  isFavorite?: boolean;
-  onTogglePin: (id: string) => void;
-  onToggleFavorite?: (id: string) => void;
+  onPin: (id: string) => void;
   onSelect: (laptop: Laptop) => void;
 }
 
 export const LaptopCard: React.FC<LaptopCardProps> = ({
   laptop,
-  index,
   unidaysActive,
-  currency = 'INR',
-  currencyRates,
   isPinned,
-  isFavorite = false,
-  onTogglePin,
-  onToggleFavorite,
+  onPin,
   onSelect,
 }) => {
-  const displayPriceInr = unidaysActive ? laptop.studentPriceInr : laptop.currentBestPriceInr;
-  const matchScore = laptop.calculatedMatchPct || Math.max(78, 98 - index * 3);
+  const displayPrice = getLaptopPrice(laptop, unidaysActive);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: index * 0.08 }}
-      whileHover={{ y: -6, scale: 1.01 }}
-      className="group relative p-6 sm:p-8 rounded-3xl bg-[#101010] border border-white/10 hover:border-blue-500/50 transition-all duration-300 shadow-xl overflow-hidden cursor-pointer"
+    <div
       onClick={() => onSelect(laptop)}
+      className="group relative rounded-3xl overflow-hidden bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-2xl hover:-translate-y-1.5 transition-all duration-400 cursor-pointer flex flex-col justify-between"
     >
-      {/* Top Hover Electric Blue Line Indicator */}
-      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-600 to-cyan-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+      <div className="relative h-60 sm:h-64 overflow-hidden bg-slate-100 dark:bg-slate-800/80 flex items-center justify-center p-4">
+        <img
+          src={getLaptopImage(laptop)}
+          alt={laptop.name}
+          className="w-full h-full object-cover rounded-xl group-hover:scale-105 transition-transform duration-500"
+        />
 
-      {/* Header Row: Brand & Match Badge */}
-      <div className="flex items-center justify-between gap-4 mb-4">
-        <div>
-          <span className="text-xs font-mono font-bold uppercase text-slate-400 group-hover:text-blue-400 transition-colors">
+        <div className="absolute top-3 left-3 flex items-center space-x-2 z-10">
+          <span className="px-3 py-1 rounded-full bg-slate-900/80 backdrop-blur-md text-white text-[10px] font-bold tracking-wider uppercase">
             {laptop.brand}
           </span>
-          <h3 className="text-xl sm:text-2xl font-black text-white line-clamp-1 mt-0.5">
-            {laptop.name}
-          </h3>
+          {unidaysActive && laptop.studentPriceInr && (
+            <span className="px-2.5 py-1 rounded-full bg-emerald-600/90 backdrop-blur-md text-white text-[10px] font-bold flex items-center space-x-1">
+              <GraduationCap className="w-3 h-3" />
+              <span>UNiDAYS</span>
+            </span>
+          )}
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              if (onToggleFavorite) onToggleFavorite(laptop.id);
-            }}
-            className={`p-2 rounded-full border transition-all ${
-              isFavorite
-                ? 'bg-rose-500/20 border-rose-500/40 text-rose-400'
-                : 'bg-slate-900 border-white/10 text-slate-400 hover:text-rose-400'
-            }`}
-          >
-            <Heart className={`w-4 h-4 ${isFavorite ? 'fill-rose-400' : ''}`} />
-          </button>
-
-          <span className="px-3.5 py-1.5 rounded-full text-xs font-mono font-extrabold bg-blue-500/10 text-blue-400 border border-blue-500/30">
-            {matchScore}% MATCH
-          </span>
-        </div>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onPin(laptop.id);
+          }}
+          title={isPinned ? 'Remove from Compare' : 'Pin to Compare'}
+          className={`absolute top-3 right-3 p-2 rounded-full backdrop-blur-md transition-all z-10 cursor-pointer ${
+            isPinned
+              ? 'bg-blue-600 text-white shadow-md'
+              : 'bg-white/80 dark:bg-slate-900/80 text-slate-600 dark:text-slate-300 opacity-0 group-hover:opacity-100 hover:bg-white dark:hover:bg-slate-800'
+          }`}
+        >
+          <Scale className="w-4 h-4" />
+        </button>
       </div>
 
-      {/* Large Central Laptop Image Presentation */}
-      <div className="my-6 h-48 sm:h-56 w-full rounded-2xl bg-[#050505] flex items-center justify-center p-4 border border-white/5 relative overflow-hidden">
-        <img
-          src={laptop.image}
-          alt={laptop.name}
-          className="max-h-full object-contain filter drop-shadow-[0_10px_20px_rgba(0,0,0,0.8)] group-hover:scale-105 group-hover:rotate-1 transition-all duration-500"
-        />
-      </div>
-
-      {/* Specifications HUD Chips */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono mb-6">
-        <div className="p-2.5 rounded-xl bg-[#050505] border border-white/5 text-slate-300 font-semibold truncate">
-          {laptop.specs.gpu}
-        </div>
-        <div className="p-2.5 rounded-xl bg-[#050505] border border-white/5 text-slate-300 font-semibold truncate">
-          {laptop.specs.cpu.split(' ')[0]} {laptop.specs.cpu.split(' ')[1] || ''}
-        </div>
-        <div className="p-2.5 rounded-xl bg-[#050505] border border-white/5 text-slate-300 font-semibold truncate">
-          {laptop.specs.ramGb}GB RAM
-        </div>
-        <div className="p-2.5 rounded-xl bg-[#050505] border border-white/5 text-slate-300 font-semibold truncate">
-          {laptop.specs.ssdStorageGb}GB SSD
-        </div>
-      </div>
-
-      {/* Footer Row: Price & Compare Pin Action */}
-      <div className="flex items-center justify-between pt-4 border-t border-white/10">
+      <div className="p-6 space-y-4 flex-1 flex flex-col justify-between">
         <div>
-          <span className="text-[10px] font-mono text-slate-500 uppercase block">Current Price</span>
-          <span className="text-xl sm:text-2xl font-black font-mono text-white">
-            {formatPrice(displayPriceInr, currency, currencyRates)}
-          </span>
+          <div className="flex justify-between items-start">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white font-display line-clamp-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+              {laptop.name}
+            </h3>
+          </div>
+
+          <p className="text-xs text-slate-500 mt-1 line-clamp-1">
+            {getLaptopCpu(laptop)} • {getLaptopGpu(laptop)} ({getLaptopTgp(laptop)}W TGP)
+          </p>
+
+          <div className="flex items-center space-x-3 text-xs font-semibold text-slate-700 dark:text-slate-300 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+            <span>{getLaptopRam(laptop)}GB RAM</span>
+            <span>•</span>
+            <span>
+              {getLaptopSsd(laptop) >= 1000
+                ? `${getLaptopSsd(laptop) / 1000}TB`
+                : `${getLaptopSsd(laptop)}GB`}{' '}
+              SSD
+            </span>
+            <span>•</span>
+            <span>{getLaptopRefreshHz(laptop)}Hz</span>
+          </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onTogglePin(laptop.id);
-            }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border transition-all ${
-              isPinned
-                ? 'bg-blue-600 border-blue-500 text-white'
-                : 'bg-slate-900 border-white/10 text-slate-300 hover:text-white hover:border-slate-700'
-            }`}
-          >
-            {isPinned ? <Check className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
-            <span>{isPinned ? 'PINNED' : '+ COMPARE'}</span>
-          </button>
+        <div className="flex items-center justify-between pt-2">
+          <div>
+            <span className="text-xs text-slate-400 font-medium">Price</span>
+            <p className="text-lg font-extrabold text-slate-900 dark:text-white font-display">
+              ₹{displayPrice.toLocaleString('en-IN')}
+            </p>
+          </div>
 
-          <a
-            href={laptop.retailerPrices.officialUrl}
-            target="_blank"
-            rel="noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="p-2.5 rounded-xl bg-blue-600 text-white hover:bg-blue-500 transition-colors"
-          >
-            <ExternalLink className="w-4 h-4" />
-          </a>
+          <div className="inline-flex items-center space-x-1 text-xs font-bold text-blue-600 dark:text-blue-400 group-hover:translate-x-1 transition-transform">
+            <span>EXPLORE</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </div>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 };

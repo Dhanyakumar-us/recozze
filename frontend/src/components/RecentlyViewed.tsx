@@ -1,28 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import type { Laptop, CurrencyType } from '../types/laptop';
+import type { Laptop } from '../types/laptop';
 import { LaptopCard } from './LaptopCard';
 
 interface RecentlyViewedProps {
   allLaptops: Laptop[];
   unidaysActive: boolean;
-  currency?: CurrencyType;
-  currencyRates?: Record<string, number>;
   pinnedIds: string[];
-  favoriteIds: string[];
   onTogglePin: (id: string) => void;
-  onToggleFavorite: (id: string) => void;
   onSelectLaptop: (laptop: Laptop) => void;
 }
 
 export const RecentlyViewed: React.FC<RecentlyViewedProps> = ({
   allLaptops,
   unidaysActive,
-  currency = 'INR',
-  currencyRates,
   pinnedIds,
-  favoriteIds,
   onTogglePin,
-  onToggleFavorite,
   onSelectLaptop,
 }) => {
   const [recentLaptops, setRecentLaptops] = useState<Laptop[]>([]);
@@ -48,26 +40,21 @@ export const RecentlyViewed: React.FC<RecentlyViewedProps> = ({
 
   return (
     <section className="w-full py-12 space-y-6">
-      <div className="border-b border-white/10 pb-4">
-        <span className="text-xs font-mono font-bold uppercase text-blue-400 tracking-wider">
+      <div className="border-b border-slate-200 dark:border-slate-800 pb-4">
+        <span className="text-xs font-bold uppercase text-blue-600 dark:text-blue-400 tracking-wider">
           PERSISTENT HISTORY
         </span>
-        <h2 className="text-2xl font-black text-white">CONTINUE EXPLORING</h2>
+        <h2 className="text-2xl font-bold font-display text-slate-900 dark:text-white">CONTINUE EXPLORING</h2>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {recentLaptops.slice(0, 2).map((laptop, index) => (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {recentLaptops.slice(0, 2).map((laptop) => (
           <LaptopCard
             key={laptop.id}
             laptop={laptop}
-            index={index}
             unidaysActive={unidaysActive}
-            currency={currency}
-            currencyRates={currencyRates}
             isPinned={pinnedIds.includes(laptop.id)}
-            isFavorite={favoriteIds.includes(laptop.id)}
-            onTogglePin={onTogglePin}
-            onToggleFavorite={onToggleFavorite}
+            onPin={onTogglePin}
             onSelect={onSelectLaptop}
           />
         ))}
