@@ -21,6 +21,30 @@ export function getSessionId(): string {
   return sid;
 }
 
+export async function trackUserEvent(
+  eventType: string,
+  laptopId?: string,
+  context?: Record<string, any>
+): Promise<any> {
+  try {
+    const sid = getSessionId();
+    const res = await fetch(`${API_BASE}/events/track`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        session_id: sid,
+        event_type: eventType,
+        laptop_id: laptopId,
+        context: context || {}
+      })
+    });
+    return await res.json();
+  } catch (e) {
+    console.error('[Track Event Error]:', e);
+    return null;
+  }
+}
+
 export function mapBackendToLaptop(item: any): Laptop {
   const t = item.thermal || {};
   const b = item.benchmarks || {};

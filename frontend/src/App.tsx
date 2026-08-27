@@ -14,14 +14,17 @@ import { ChatbotDrawer } from './components/ChatbotDrawer';
 import { CommandPalette } from './components/CommandPalette';
 import { Toast } from './components/Toast';
 import { PowerDashboard } from './components/powerDashboard/PowerDashboard';
+import { AutomatedRealtimeBar } from './components/AutomatedRealtimeBar';
 
 import type { Laptop, UserPreferences, MarketTrendsData } from './types/laptop';
-import { fetchLaptops, fetchMarketTrends, compareLaptopsApi, connectRealtimeWebSocket } from './services/api';
+import { fetchLaptops, fetchMarketTrends, compareLaptopsApi, connectRealtimeWebSocket, trackUserEvent } from './services/api';
 
 export function App() {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [activeTab, setActiveTab] = useState<PageTab>('home');
   const [powerLaptop, setPowerLaptop] = useState<Laptop | null>(null);
+  const [activeSignals, setActiveSignals] = useState<string[]>([]);
+  const [viewedCount, setViewedCount] = useState<number>(0);
 
   useEffect(() => {
     if (theme === 'dark') {
@@ -104,11 +107,35 @@ export function App() {
     fetchMarketTrends().then(setMarketTrends).catch(console.error);
   }, []);
 
+  const handleSelectLaptop = (laptop: Laptop | null) => {
+    setSelectedLaptop(laptop);
+    if (laptop) {
+      setViewedCount((prev) => prev + 1);
+      trackUserEvent('view_laptop', laptop.id, { brand: laptop.brand, tgp: laptop.specs.tgpWatts });
+      if (laptop.specs.tgpWatts >= 120 && !activeSignals.includes('High TGP GPU (120W+)')) {
+        setActiveSignals((prev) => Array.from(new Set([...prev, 'High TGP GPU (120W+)'])));
+      }
+      if (laptop.cooling?.vaporChamber || laptop.cooling?.liquidMetal) {
+        if (!activeSignals.includes('Liquid Metal / Vapor Chamber')) {
+          setActiveSignals((prev) => Array.from(new Set([...prev, 'Liquid Metal / Vapor Chamber'])));
+        }
+      }
+      if (laptop.specs.ramGb >= 32 && !activeSignals.includes('32GB+ RAM Capacity')) {
+        setActiveSignals((prev) => Array.from(new Set([...prev, '32GB+ RAM Capacity'])));
+      }
+    }
+  };
+
   const handlePreferenceChange = (updated: Partial<UserPreferences>) => {
     setPreferences((prev) => ({ ...prev, ...updated }));
+    trackUserEvent('filter_change', undefined, updated);
+    if (updated.workload) {
+      setActiveSignals((prev) => Array.from(new Set([...prev, `Target Workload: ${updated.workload}`])));
+    }
   };
 
   const handleTogglePin = (id: string) => {
+    trackUserEvent('compare_laptop', id);
     setPinnedIds((prev) => {
       if (prev.includes(id)) {
         return prev.filter((item) => item !== id);
@@ -208,6 +235,21 @@ export function App() {
             {/* Market Trends Section */}
             {marketTrends && <MarketTrendsChart data={marketTrends} />}
 
+            {/* Automated Real-Time AI Recommendation Bar */}
+            <div className="max-w-7xl mx-auto px-6 sm:px-8">
+              <AutomatedRealtimeBar
+                topLaptop={laptops[0] || null}
+                totalViewed={viewedCount}
+                activeSignals={activeSignals}
+                unidaysActive={preferences.unidaysActive}
+                onSelectTopLaptop={handleSelectLaptop}
+                onAnalyzePower={(lap) => {
+                  setPowerLaptop(lap);
+                  setActiveTab('power');
+                }}
+              />
+            </div>
+
             {/* Full Laptop Catalog Explorer */}
             <LaptopGrid
               laptops={laptops}
@@ -216,7 +258,7 @@ export function App() {
               onPreferenceChange={handlePreferenceChange}
               pinnedIds={pinnedIds}
               onPinLaptop={handleTogglePin}
-              onSelectLaptop={setSelectedLaptop}
+              onSelectLaptop={handleSelectLaptop}
               onAnalyzePower={(lap) => {
                 setPowerLaptop(lap);
                 setActiveTab('power');
@@ -226,7 +268,19 @@ export function App() {
         )}
 
         {activeTab === 'catalog' && (
-          <div className="pt-24">
+          <div className="pt-24 max-w-7xl mx-auto px-6 sm:px-8 space-y-6">
+            <AutomatedRealtimeBar
+              topLaptop={laptops[0] || null}
+              totalViewed={viewedCount}
+              activeSignals={activeSignals}
+              unidaysActive={preferences.unidaysActive}
+              onSelectTopLaptop={handleSelectLaptop}
+              onAnalyzePower={(lap) => {
+                setPowerLaptop(lap);
+                setActiveTab('power');
+              }}
+            />
+
             <LaptopGrid
               laptops={laptops}
               loading={loading}
@@ -234,7 +288,7 @@ export function App() {
               onPreferenceChange={handlePreferenceChange}
               pinnedIds={pinnedIds}
               onPinLaptop={handleTogglePin}
-              onSelectLaptop={setSelectedLaptop}
+              onSelectLaptop={handleSelectLaptop}
               onAnalyzePower={(lap) => {
                 setPowerLaptop(lap);
                 setActiveTab('power');
