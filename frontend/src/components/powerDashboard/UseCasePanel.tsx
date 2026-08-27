@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Gamepad2, Code2, Video, Brain, Layers, ChevronDown, ChevronUp } from 'lucide-react';
-import type { UseCaseScore } from '../../types/systemMonitor';
-import { MetricTooltip } from './MetricTooltip';
+import type { UseCaseScore } from '../../services/useCaseScore';
 
 interface UseCasePanelProps {
   scores: UseCaseScore[];
@@ -25,12 +24,9 @@ export const UseCasePanel: React.FC<UseCasePanelProps> = ({ scores }) => {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <h2 className="text-sm font-mono font-bold tracking-wider text-slate-300 uppercase">
-            PERFORMANCE BY USE CASE
-          </h2>
-          <MetricTooltip content="Workload performance scores dynamically computed from CPU multi-core score, GPU TGP, RAM speed, and storage read throughput." />
-        </div>
+        <h2 className="text-xs font-mono font-bold tracking-wider text-slate-300 uppercase">
+          PERFORMANCE BY USE CASE
+        </h2>
         <span className="text-[10px] font-mono text-cyan-400 font-bold uppercase">SCORES OUT OF 10</span>
       </div>
 
@@ -78,27 +74,31 @@ export const UseCasePanel: React.FC<UseCasePanelProps> = ({ scores }) => {
                 />
               </div>
 
-              {/* Expandable Details Breakdown */}
+              {/* Formula & Detail Breakdown */}
               {isExpanded && (
                 <div className="mt-4 pt-3 border-t border-slate-800/80 space-y-3 text-xs font-mono animate-in fade-in slide-in-from-top-2">
-                  <div className="grid grid-cols-3 gap-2 text-center bg-slate-950/60 p-2.5 rounded-xl border border-slate-800">
+                  <div className="grid grid-cols-4 gap-1 text-center bg-slate-950/60 p-2 rounded-xl border border-slate-800">
                     <div>
-                      <span className="text-[10px] text-slate-500">CPU Weight</span>
-                      <p className="font-bold text-cyan-400">{item.cpuImpactPct}%</p>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-slate-500">GPU Weight</span>
+                      <span className="text-[9px] text-slate-500 uppercase">GPU Weight</span>
                       <p className="font-bold text-blue-400">{item.gpuImpactPct}%</p>
                     </div>
                     <div>
-                      <span className="text-[10px] text-slate-500">RAM Weight</span>
+                      <span className="text-[9px] text-slate-500 uppercase">CPU Weight</span>
+                      <p className="font-bold text-cyan-400">{item.cpuImpactPct}%</p>
+                    </div>
+                    <div>
+                      <span className="text-[9px] text-slate-500 uppercase">RAM Weight</span>
                       <p className="font-bold text-indigo-400">{item.ramImpactPct}%</p>
+                    </div>
+                    <div>
+                      <span className="text-[9px] text-slate-500 uppercase">SSD Weight</span>
+                      <p className="font-bold text-emerald-400">{item.storageImpactPct}%</p>
                     </div>
                   </div>
 
                   <div className="space-y-1">
                     <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">
-                      RECOMMENDED SUITABILITY
+                      SUITABLE WORKLOADS
                     </span>
                     <p className="text-slate-300 font-sans text-xs">{item.recommendedWorkload}</p>
                   </div>

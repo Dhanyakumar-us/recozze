@@ -1,24 +1,31 @@
 import type { Laptop } from '../types/laptop';
-import type { PerformanceMode, UseCaseScore, SystemMetrics } from '../types/systemMonitor';
 import { calculatePowerScore, getScoreRating } from './powerScore';
 
-export function calculateUseCaseScores(
-  laptop: Laptop,
-  mode: PerformanceMode = 'balanced',
-  metrics?: SystemMetrics
-): UseCaseScore[] {
-  const breakdown = calculatePowerScore(laptop, mode, metrics);
+export interface UseCaseScore {
+  category: 'Gaming' | 'Programming' | 'Video Editing' | 'AI / ML' | 'Multitasking';
+  score: number; // out of 10
+  rating: 'EXCEPTIONAL' | 'EXCELLENT' | 'GOOD' | 'AVERAGE' | 'NEEDS IMPROVEMENT';
+  cpuImpactPct: number;
+  gpuImpactPct: number;
+  ramImpactPct: number;
+  storageImpactPct: number;
+  recommendedWorkload: string;
+  limitations: string;
+}
+
+export function calculateUseCaseScores(laptop: Laptop): UseCaseScore[] {
+  const breakdown = calculatePowerScore(laptop);
   const { cpuScore, gpuScore, ramScore, storageScore } = breakdown;
 
-  // Normalize scores (0-100 to 0-10)
+  // Scale 0-100 down to 0-10
   const cpu10 = cpuScore / 10;
   const gpu10 = gpuScore / 10;
   const ram10 = ramScore / 10;
   const storage10 = storageScore / 10;
 
-  // 1. Gaming: GPU 50%, CPU 25%, RAM 15%, Storage 10%
-  const gamingVal = Number((gpu10 * 0.50 + cpu10 * 0.25 + ram10 * 0.15 + storage10 * 0.10).toFixed(1));
-  
+  // 1. Gaming: GPU 50%, CPU 30%, RAM 10%, Storage 10%
+  const gamingVal = Number((gpu10 * 0.50 + cpu10 * 0.30 + ram10 * 0.10 + storage10 * 0.10).toFixed(1));
+
   // 2. Programming: CPU 40%, RAM 30%, Storage 20%, GPU 10%
   const progVal = Number((cpu10 * 0.40 + ram10 * 0.30 + storage10 * 0.20 + gpu10 * 0.10).toFixed(1));
 
@@ -28,19 +35,20 @@ export function calculateUseCaseScores(
   // 4. AI / ML: GPU 50%, RAM 25%, CPU 20%, Storage 5%
   const aiVal = Number((gpu10 * 0.50 + ram10 * 0.25 + cpu10 * 0.20 + storage10 * 0.05).toFixed(1));
 
-  // 5. Multitasking: RAM 40%, CPU 35%, Storage 15%, GPU 10%
-  const multiVal = Number((ram10 * 0.40 + cpu10 * 0.35 + storage10 * 0.15 + gpu10 * 0.10).toFixed(1));
+  // 5. Multitasking: RAM 40%, CPU 35%, Storage 20%, GPU 5%
+  const multiVal = Number((ram10 * 0.40 + cpu10 * 0.35 + storage10 * 0.20 + gpu10 * 0.05).toFixed(1));
 
   return [
     {
       category: 'Gaming',
       score: gamingVal,
       rating: getScoreRating(gamingVal * 10),
-      cpuImpactPct: 25,
+      cpuImpactPct: 30,
       gpuImpactPct: 50,
-      ramImpactPct: 15,
-      recommendedWorkload: 'AAA Title Gaming, High Frame-rate Esports & Ray Tracing',
-      limitations: gpu10 < 7.5 ? 'Lower GPU TGP may require DLSS or reduced resolution' : 'None detected; high-TGP graphics card handles max settings',
+      ramImpactPct: 10,
+      storageImpactPct: 10,
+      recommendedWorkload: 'AAA High-FPS Gaming, Ray Tracing & Esports Titles',
+      limitations: gpu10 < 7.5 ? 'Lower GPU TGP may require DLSS or reduced graphics settings' : 'Handles high-resolution 1440p/4K gaming smoothly',
     },
     {
       category: 'Programming',
@@ -49,8 +57,9 @@ export function calculateUseCaseScores(
       cpuImpactPct: 40,
       gpuImpactPct: 10,
       ramImpactPct: 30,
-      recommendedWorkload: 'Multi-threaded Code Compiling, Docker Containers & Virtual Machines',
-      limitations: cpu10 < 7.0 ? 'High core count tasks could take longer during parallel builds' : 'Fast multi-core compilation speeds',
+      storageImpactPct: 20,
+      recommendedWorkload: 'Multi-threaded Code Compiling, Docker Containers & IDE Workflows',
+      limitations: cpu10 < 7.0 ? 'Parallel compilation builds may take longer' : 'High core count speeds up multi-project compilation',
     },
     {
       category: 'Video Editing',
@@ -59,8 +68,9 @@ export function calculateUseCaseScores(
       cpuImpactPct: 30,
       gpuImpactPct: 35,
       ramImpactPct: 25,
+      storageImpactPct: 10,
       recommendedWorkload: '4K/8K Video Timeline Editing, Color Grading & After Effects Rendering',
-      limitations: ram10 < 8.0 ? 'Complex 4K timelines benefit from upgrading to 32GB+ RAM' : 'Optimal unified memory bandwidth for heavy exports',
+      limitations: ram10 < 8.0 ? 'Complex 4K timelines benefit from upgrading to 32GB+ RAM' : 'Optimal hardware encoder throughput for fast video export',
     },
     {
       category: 'AI / ML',
@@ -69,18 +79,20 @@ export function calculateUseCaseScores(
       cpuImpactPct: 20,
       gpuImpactPct: 50,
       ramImpactPct: 25,
+      storageImpactPct: 5,
       recommendedWorkload: 'Local LLM Inference, PyTorch Model Training & CUDA Acceleration',
-      limitations: gpu10 < 8.5 ? 'VRAM buffer (8GB) limits large LLM parameter weights' : 'Capable of high-speed local inference & matrix tensor operations',
+      limitations: gpu10 < 8.0 ? 'VRAM buffer limits large LLM parameter weights' : 'High VRAM bandwidth for local AI inference & model fine-tuning',
     },
     {
       category: 'Multitasking',
       score: multiVal,
       rating: getScoreRating(multiVal * 10),
       cpuImpactPct: 35,
-      gpuImpactPct: 10,
+      gpuImpactPct: 5,
       ramImpactPct: 40,
-      recommendedWorkload: '50+ Browser Tabs, Discord, IDE & Background Data Ingestion',
-      limitations: ram10 < 7.5 ? 'High memory utilization under heavy browser tab loads' : 'Smooth multi-monitor workflow switching',
+      storageImpactPct: 20,
+      recommendedWorkload: '50+ Browser Tabs, Background Database Ingestion & Multi-Display Work',
+      limitations: ram10 < 7.5 ? 'RAM capacity may bottleneck heavy browser tab loads' : 'Smooth multi-application context switching',
     },
   ];
 }

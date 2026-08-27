@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Zap } from 'lucide-react';
 import type { PowerScoreBreakdown } from '../../services/powerScore';
-import { MetricTooltip } from './MetricTooltip';
 
 interface PowerGaugeProps {
   breakdown: PowerScoreBreakdown;
@@ -10,10 +9,11 @@ interface PowerGaugeProps {
 export const PowerGauge: React.FC<PowerGaugeProps> = ({ breakdown }) => {
   const [animatedScore, setAnimatedScore] = useState(0);
 
+  // Entrance animation only on load or score change
   useEffect(() => {
     let start = 0;
     const end = breakdown.overallScore;
-    const duration = 1200; // ms
+    const duration = 1000; // ms
     const startTime = performance.now();
 
     const animate = (now: number) => {
@@ -32,7 +32,7 @@ export const PowerGauge: React.FC<PowerGaugeProps> = ({ breakdown }) => {
 
   // Semicircular SVG math
   const radius = 110;
-  const strokeWidth = 14;
+  const strokeWidth = 16;
   const circumference = Math.PI * radius; // 180 degree arc
   const strokeDashoffset = circumference - (animatedScore / 100) * circumference;
 
@@ -45,17 +45,16 @@ export const PowerGauge: React.FC<PowerGaugeProps> = ({ breakdown }) => {
   };
 
   return (
-    <div className="relative flex flex-col items-center justify-center p-6 rounded-3xl bg-slate-900/60 border border-cyan-500/20 backdrop-blur-xl shadow-2xl">
-      <div className="flex items-center space-x-2 text-xs font-mono font-bold tracking-widest text-slate-400 uppercase mb-2">
+    <div className="relative flex flex-col items-center justify-center p-6 rounded-3xl bg-slate-900/60 border border-cyan-500/20 backdrop-blur-xl shadow-2xl space-y-4">
+      <div className="flex items-center space-x-2 text-xs font-mono font-bold tracking-widest text-slate-400 uppercase">
         <Zap className="w-4 h-4 text-cyan-400" />
         <span>OVERALL POWER SCORE</span>
-        <MetricTooltip content="Combined performance score dynamically calculated from CPU (30%), GPU (30%), RAM (15%), Storage (10%), and Thermal Efficiency (15%)." />
       </div>
 
       {/* Semicircular SVG Gauge */}
       <div className="relative w-64 h-36 flex items-center justify-center overflow-hidden">
         <svg className="w-64 h-64 -rotate-180 transform" viewBox="0 0 260 260">
-          {/* Background Track */}
+          {/* Track background */}
           <path
             d="M 20,130 A 110,110 0 0,1 240,130"
             fill="none"
@@ -64,11 +63,11 @@ export const PowerGauge: React.FC<PowerGaugeProps> = ({ breakdown }) => {
             strokeLinecap="round"
           />
 
-          {/* Animated Value Stroke */}
+          {/* Value stroke */}
           <path
             d="M 20,130 A 110,110 0 0,1 240,130"
             fill="none"
-            stroke="url(#powerGaugeGradient)"
+            stroke="url(#staticGaugeGradient)"
             strokeWidth={strokeWidth}
             strokeDasharray={circumference}
             strokeDashoffset={strokeDashoffset}
@@ -77,7 +76,7 @@ export const PowerGauge: React.FC<PowerGaugeProps> = ({ breakdown }) => {
           />
 
           <defs>
-            <linearGradient id="powerGaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+            <linearGradient id="staticGaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
               <stop offset="0%" stopColor="#06b6d4" />
               <stop offset="50%" stopColor="#3b82f6" />
               <stop offset="100%" stopColor="#a855f7" />
@@ -86,7 +85,7 @@ export const PowerGauge: React.FC<PowerGaugeProps> = ({ breakdown }) => {
         </svg>
 
         {/* Center Text Display */}
-        <div className="absolute top-12 flex flex-col items-center justify-center text-center">
+        <div className="absolute top-10 flex flex-col items-center justify-center text-center">
           <div className="flex items-baseline space-x-1">
             <span className="text-5xl font-black tracking-tight text-white font-display">
               {animatedScore}
@@ -95,7 +94,7 @@ export const PowerGauge: React.FC<PowerGaugeProps> = ({ breakdown }) => {
           </div>
 
           <span
-            className={`mt-1 px-3 py-0.5 rounded-full text-xs font-mono font-black tracking-wider uppercase bg-gradient-to-r ${getGaugeColor(
+            className={`mt-1.5 px-3 py-0.5 rounded-full text-xs font-mono font-black tracking-wider uppercase bg-gradient-to-r ${getGaugeColor(
               animatedScore
             )} text-white shadow-md`}
           >
@@ -104,27 +103,27 @@ export const PowerGauge: React.FC<PowerGaugeProps> = ({ breakdown }) => {
         </div>
       </div>
 
-      {/* Sub-Score Category Matrix Pills */}
-      <div className="w-full grid grid-cols-5 gap-2 pt-4 border-t border-slate-800 text-center">
+      {/* Sub-Score Formula Breakdown Pills */}
+      <div className="w-full grid grid-cols-5 gap-2 pt-4 border-t border-slate-800 text-center font-mono">
         <div>
-          <span className="text-[10px] font-mono text-slate-400 uppercase">CPU</span>
-          <p className="text-xs font-bold text-cyan-400 font-mono">{breakdown.cpuScore}</p>
+          <span className="text-[10px] text-slate-400 uppercase block">CPU (30%)</span>
+          <p className="text-xs font-bold text-cyan-400">{breakdown.cpuScore}</p>
         </div>
         <div>
-          <span className="text-[10px] font-mono text-slate-400 uppercase">GPU</span>
-          <p className="text-xs font-bold text-blue-400 font-mono">{breakdown.gpuScore}</p>
+          <span className="text-[10px] text-slate-400 uppercase block">GPU (30%)</span>
+          <p className="text-xs font-bold text-blue-400">{breakdown.gpuScore}</p>
         </div>
         <div>
-          <span className="text-[10px] font-mono text-slate-400 uppercase">RAM</span>
-          <p className="text-xs font-bold text-indigo-400 font-mono">{breakdown.ramScore}</p>
+          <span className="text-[10px] text-slate-400 uppercase block">RAM (15%)</span>
+          <p className="text-xs font-bold text-indigo-400">{breakdown.ramScore}</p>
         </div>
         <div>
-          <span className="text-[10px] font-mono text-slate-400 uppercase">SSD</span>
-          <p className="text-xs font-bold text-emerald-400 font-mono">{breakdown.storageScore}</p>
+          <span className="text-[10px] text-slate-400 uppercase block">SSD (10%)</span>
+          <p className="text-xs font-bold text-emerald-400">{breakdown.storageScore}</p>
         </div>
         <div>
-          <span className="text-[10px] font-mono text-slate-400 uppercase">COOL</span>
-          <p className="text-xs font-bold text-purple-400 font-mono">{breakdown.thermalScore}</p>
+          <span className="text-[10px] text-slate-400 uppercase block">COOL (15%)</span>
+          <p className="text-xs font-bold text-purple-400">{breakdown.thermalScore}</p>
         </div>
       </div>
     </div>

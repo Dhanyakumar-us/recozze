@@ -260,6 +260,12 @@ export function App() {
             selectedLaptop={powerLaptop || laptops[0]}
             allLaptops={laptops}
             onSelectLaptop={(lap) => setPowerLaptop(lap)}
+            onBackToLaptop={() => {
+              setSelectedLaptop(powerLaptop || laptops[0]);
+              setActiveTab('catalog');
+            }}
+            onOpenCompare={() => setIsCompareOpen(true)}
+            onOpenChat={() => setIsChatOpen(true)}
           />
         )}
 
