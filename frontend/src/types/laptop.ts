@@ -7,6 +7,7 @@ export type WorkloadType =
   | 'budget';
 
 export type TgpTierType = 'all' | 'thin_light' | 'balanced' | 'unlocked';
+export type CurrencyType = 'INR' | 'USD' | 'EUR' | 'GBP' | 'AED' | 'CAD' | 'AUD';
 
 export interface DisplaySpecs {
   size_inches: number;
@@ -113,7 +114,17 @@ export interface Laptop {
   calculatedMatchPct?: number;
   effectivePriceInr?: number;
   forecast?: PriceForecast;
+  realtimeBoostReason?: string;
+  realtimeScore?: number;
 }
+
+export interface RealtimeEventPayload {
+  session_id: string;
+  event_type: 'view_laptop' | 'filter_change' | 'compare_laptop' | 'search_query';
+  laptop_id?: string;
+  context?: Record<string, any>;
+}
+
 
 export interface MarketTrend {
   month: string;
@@ -146,6 +157,23 @@ export interface UserPreferences {
   searchQuery: string;
   activeTab: 'recommendations' | 'matcher' | 'market' | 'compare';
   theme: 'dark' | 'light';
+  currency?: CurrencyType;
+  // AI Finder Wizard Extensions
+  selectedBrands?: string[];
+  performanceTier?: 'balanced' | 'performance' | 'extreme';
+  portabilityPriority?: 'max_perf' | 'balanced' | 'ultra_portable';
+  extraNotes?: string;
+  wizardCompleted?: boolean;
+}
+
+export interface MatchBreakdown {
+  overall: number;
+  performance: number;
+  budget: number;
+  portability: number;
+  display: number;
+  battery: number;
+  reasons: string[];
 }
 
 export interface ChatResponse {
@@ -153,4 +181,49 @@ export interface ChatResponse {
   topic: string;
   response: string;
   suggested_prompts: string[];
+  api_connected?: string | null;
 }
+
+export interface CurrencyRates {
+  base_currency: string;
+  rates: Record<string, number>;
+  api_source: string;
+  last_updated: string;
+}
+
+export interface LivePriceResult {
+  laptop: string;
+  live_price_inr?: number;
+  official_store_inr?: number;
+  amazon_inr?: number;
+  flipkart_inr?: number;
+  source: string;
+  connected_apis: string[];
+  is_live_api: boolean;
+  product_link?: string;
+  notice?: string;
+}
+
+export interface StudentVerifyResult {
+  verified: boolean;
+  email: string;
+  auth_provider: string;
+  student_discount_active: boolean;
+  unidays_perks_unlocked: string[];
+  api_connected?: string;
+}
+
+export interface ApiStatusResult {
+  groq_ai: boolean;
+  gemini_ai: boolean;
+  openai_ai: boolean;
+  exchange_rate_api: boolean;
+  rapidapi: boolean;
+  serpapi: boolean;
+  keepa_api: boolean;
+  firebase_auth: boolean;
+  database_url: boolean;
+  supabase_key?: boolean;
+  env_file_loaded: boolean;
+}
+

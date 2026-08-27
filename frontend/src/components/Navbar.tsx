@@ -1,201 +1,335 @@
 import React, { useState, useEffect } from 'react';
-import { Cpu, Search, GraduationCap, Scale, Zap, SlidersHorizontal, TrendingDown, LayoutGrid, Sun, Moon } from 'lucide-react';
-import type { UserPreferences } from '../types/laptop';
+import { Search, Heart, Scale, GraduationCap, Menu, X, ShieldCheck, CheckCircle2, Loader2, Bot, Sparkles, Home, Laptop, TrendingUp, Activity } from 'lucide-react';
+import type { UserPreferences, StudentVerifyResult } from '../types/laptop';
+import { verifyStudentApi } from '../services/api';
+
+export type PageTab = 'home' | 'finder' | 'catalog' | 'trends' | 'api-status';
 
 interface NavbarProps {
   preferences: UserPreferences;
   onPreferenceChange: (updated: Partial<UserPreferences>) => void;
+  activePage: PageTab;
+  onPageChange: (page: PageTab) => void;
   pinnedCount: number;
+  favoritesCount?: number;
   onOpenCompare: () => void;
-  onToggleChat: () => void;
+  onOpenCommandPalette?: () => void;
+  onOpenSearch?: () => void;
+  onOpenFavorites?: () => void;
+  onToggleChat?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   preferences,
   onPreferenceChange,
+  activePage,
+  onPageChange,
   pinnedCount,
+  favoritesCount = 0,
   onOpenCompare,
-  onToggleChat
+  onOpenCommandPalette,
+  onOpenSearch,
+  onOpenFavorites,
+  onToggleChat,
 }) => {
-  const [bounce, setBounce] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showVerifyModal, setShowVerifyModal] = useState(false);
+  const [studentEmail, setStudentEmail] = useState('');
+  const [verifying, setVerifying] = useState(false);
+  const [verifyResult, setVerifyResult] = useState<StudentVerifyResult | null>(null);
 
   useEffect(() => {
-    if (pinnedCount > 0) {
-      setBounce(true);
-      const timer = setTimeout(() => setBounce(false), 600);
-      return () => clearTimeout(timer);
-    }
-  }, [pinnedCount]);
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
-  const tabs = [
-    { id: 'recommendations', label: 'Recommendations', icon: <LayoutGrid className="w-4 h-4" /> },
-    { id: 'matcher', label: 'Spec Matcher', icon: <SlidersHorizontal className="w-4 h-4" /> },
-    { id: 'market', label: 'Market Index', icon: <TrendingDown className="w-4 h-4" /> },
-    { id: 'compare', label: 'Compare Matrix', icon: <Scale className="w-4 h-4" /> }
+  const handleTriggerSearch = () => {
+    if (onOpenSearch) onOpenSearch();
+    else if (onOpenCommandPalette) onOpenCommandPalette();
+  };
+
+  const handleStudentVerify = async () => {
+    if (!studentEmail.trim() || verifying) return;
+    setVerifying(true);
+    try {
+      const res = await verifyStudentApi(studentEmail);
+      setVerifyResult(res);
+      if (res.verified) {
+        onPreferenceChange({ unidaysActive: true });
+      }
+    } catch (err) {
+      console.warn(err);
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const navLinks: { id: PageTab; label: string; icon: React.ElementType }[] = [
+    { id: 'home', label: 'Home', icon: Home },
+    { id: 'finder', label: 'AI Finder', icon: Sparkles },
+    { id: 'catalog', label: 'Catalog', icon: Laptop },
+    { id: 'trends', label: 'Market Trends', icon: TrendingUp },
+    { id: 'api-status', label: 'API Health', icon: Activity },
   ];
 
   return (
-    <nav className="sticky top-0 z-40 w-full glass-panel border-b border-slate-200/80 dark:border-slate-800 px-4 lg:px-8 py-3 transition-colors duration-300 backdrop-blur-2xl">
-      <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-        
-        {/* Brand Logo & Sliding Pill Navigation Bar */}
-        <div className="flex items-center justify-between w-full md:w-auto gap-6">
-          {/* Animated Brand Logo */}
+    <>
+      <header
+        className={`fixed top-0 left-0 right-0 z-40 w-full px-4 lg:px-8 py-4 transition-all duration-300 ${
+          scrolled
+            ? 'bg-[#0A0A0A]/90 backdrop-blur-xl border-b border-white/10 shadow-2xl py-3'
+            : 'bg-transparent border-b border-transparent'
+        }`}
+      >
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+          
+          {/* Logo Treatment */}
           <div
-            className="flex items-center gap-3 cursor-pointer group"
+            className="flex items-center gap-2.5 cursor-pointer group"
             onClick={() => {
-              onPreferenceChange({ activeTab: 'recommendations' });
+              onPageChange('home');
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
           >
-            <div className="relative p-2.5 rounded-2xl bg-cyan-500/10 dark:bg-cyan-500/20 border border-cyan-500/30 group-hover:border-cyan-500 transition-all duration-300">
-              <Cpu className="w-6 h-6 text-cyan-600 dark:text-cyan-400 group-hover:rotate-12 transition-transform duration-300" />
-              <Zap className="w-3.5 h-3.5 text-amber-500 absolute -top-1 -right-1 animate-pulse fill-amber-500" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-black text-xl tracking-tight text-slate-950 dark:text-white">
-                  RECO
-                </span>
-                <span className="text-[10px] uppercase font-mono font-bold tracking-widest px-2 py-0.5 rounded-full bg-cyan-600 dark:bg-cyan-500 text-white dark:text-slate-950 shadow-sm">
-                  TGP 2.0
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:block">Intelligent Laptop & Price Forecast Engine</p>
+            <div className="relative flex items-center justify-center">
+              <span className="font-black text-xl tracking-wider text-white group-hover:text-blue-400 transition-colors">
+                RECOZEE
+              </span>
+              <span className="w-2 h-2 rounded-full bg-blue-500 ml-2 animate-pulse shadow-[0_0_8px_#3B82F6]" />
             </div>
           </div>
 
-          {/* Sliding Segmented Tab Indicator Pill Bar */}
-          <div className="hidden lg:flex items-center gap-1 bg-slate-200/80 dark:bg-slate-900 p-1.5 rounded-full border border-slate-300/80 dark:border-slate-800 shadow-inner relative">
-            {tabs.map((t) => {
-              const active = preferences.activeTab === t.id;
+          {/* Navigation Links (Desktop) */}
+          <nav className="hidden md:flex items-center gap-1 bg-[#101010]/80 p-1.5 rounded-full border border-white/10">
+            {navLinks.map((link) => {
+              const Icon = link.icon;
+              const isActive = activePage === link.id;
               return (
                 <button
-                  key={t.id}
+                  key={link.id}
                   onClick={() => {
-                    if (t.id === 'compare') {
-                      onOpenCompare();
-                    } else {
-                      onPreferenceChange({ activeTab: t.id as any });
-                    }
+                    onPageChange(link.id);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  className={`relative z-10 flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold transition-all duration-300 ${
-                    active
-                      ? 'text-white dark:text-slate-950 font-bold'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white'
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 cursor-pointer ${
+                    isActive
+                      ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                      : 'text-slate-400 hover:text-white hover:bg-white/5'
                   }`}
                 >
-                  {t.icon}
-                  <span>{t.label}</span>
-                  {t.id === 'compare' && pinnedCount > 0 && (
-                    <span
-                      className={`ml-1 px-2 py-0.2 rounded-full text-[10px] font-bold ${
-                        active
-                          ? 'bg-slate-950 dark:bg-white text-white dark:text-slate-950'
-                          : 'bg-cyan-600 dark:bg-cyan-400 text-white dark:text-slate-950'
-                      } ${bounce ? 'animate-bounce' : ''}`}
-                    >
-                      {pinnedCount}
-                    </span>
-                  )}
-                  {/* Sliding Pill Indicator */}
-                  {active && (
-                    <span className="absolute inset-0 bg-cyan-600 dark:bg-cyan-400 rounded-full z-[-1] shadow-sm animate-slide-up" />
-                  )}
+                  <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                  <span>{link.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+
+          {/* Right Action Controls */}
+          <div className="hidden sm:flex items-center gap-3">
+            {/* Search Trigger */}
+            <button
+              onClick={handleTriggerSearch}
+              className="flex items-center gap-3 px-4 py-2 rounded-full bg-[#101010] border border-white/10 text-xs text-slate-400 hover:text-white hover:border-blue-500/50 transition-all duration-200 cursor-pointer group"
+            >
+              <Search className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-400 transition-colors" />
+              <span>Search anything...</span>
+              <kbd className="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-slate-900 text-slate-400 border border-slate-800">
+                Ctrl K
+              </kbd>
+            </button>
+
+            {/* UNiDAYS Student Badge */}
+            <button
+              onClick={() => onPreferenceChange({ unidaysActive: !preferences.unidaysActive })}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all cursor-pointer ${
+                preferences.unidaysActive
+                  ? 'bg-blue-500/10 border-blue-500/30 text-blue-400'
+                  : 'bg-[#101010] border-white/10 text-slate-400 hover:text-white'
+              }`}
+              title="Toggle Student Pricing"
+            >
+              <GraduationCap className="w-3.5 h-3.5 text-blue-400" />
+              <span className="hidden xl:inline">Student</span>
+            </button>
+
+            {/* Favorites */}
+            <button
+              onClick={onOpenFavorites}
+              className="relative p-2.5 rounded-full bg-[#101010] border border-white/10 text-slate-300 hover:text-rose-400 hover:border-rose-500/40 transition-all cursor-pointer"
+              title="Saved Favorites"
+            >
+              <Heart className="w-4 h-4" />
+              {favoritesCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold bg-rose-500 text-white">
+                  {favoritesCount}
+                </span>
+              )}
+            </button>
+
+            {/* AI Hardware Advisor Chatbot Trigger */}
+            {onToggleChat && (
+              <button
+                onClick={onToggleChat}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-blue-600/20 to-indigo-600/20 border border-blue-500/40 text-blue-300 hover:text-white hover:border-blue-400 transition-all cursor-pointer shadow-md shadow-blue-900/20"
+                title="AI Hardware & Discount Advisor Chatbot"
+              >
+                <Bot className="w-3.5 h-3.5 text-blue-400" />
+                <span>AI Chat</span>
+                <Sparkles className="w-3 h-3 text-cyan-400" />
+              </button>
+            )}
+
+            {/* Compare Badge Trigger */}
+            <button
+              onClick={onOpenCompare}
+              className="relative flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold bg-blue-600 text-white hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20 cursor-pointer"
+            >
+              <Scale className="w-3.5 h-3.5" />
+              <span>Compare</span>
+              {pinnedCount > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-extrabold bg-white text-blue-600 font-mono">
+                  {pinnedCount}
+                </span>
+              )}
+            </button>
+          </div>
+
+          {/* Mobile Navigation Trigger */}
+          <div className="flex md:hidden items-center gap-2">
+            <button
+              onClick={handleTriggerSearch}
+              className="p-2 rounded-full bg-[#101010] border border-white/10 text-slate-300"
+            >
+              <Search className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="p-2 rounded-full bg-[#101010] border border-white/10 text-slate-300"
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+          </div>
+
+        </div>
+
+        {/* Mobile Navigation Drawer */}
+        {mobileMenuOpen && (
+          <div className="md:hidden mt-4 pt-4 border-t border-white/10 bg-[#0A0A0A] rounded-2xl p-4 space-y-2">
+            {onToggleChat && (
+              <button
+                onClick={() => {
+                  onToggleChat();
+                  setMobileMenuOpen(false);
+                }}
+                className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-semibold text-blue-400 bg-blue-500/10 border border-blue-500/20"
+              >
+                <div className="flex items-center gap-2">
+                  <Bot className="w-4 h-4" />
+                  <span>AI Hardware Advisor Chatbot</span>
+                </div>
+                <Sparkles className="w-4 h-4 text-cyan-400" />
+              </button>
+            )}
+            {navLinks.map((link) => {
+              const Icon = link.icon;
+              const isActive = activePage === link.id;
+              return (
+                <button
+                  key={link.id}
+                  onClick={() => {
+                    onPageChange(link.id);
+                    setMobileMenuOpen(false);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                    isActive
+                      ? 'bg-blue-600 text-white font-bold'
+                      : 'text-slate-200 hover:bg-slate-900'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span>{link.label}</span>
                 </button>
               );
             })}
           </div>
-        </div>
+        )}
+      </header>
 
-        {/* Global Search Bar */}
-        <div className="flex-1 max-w-sm hidden xl:block">
-          <div className="relative">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search RTX 4070, Legion, 140W TGP..."
-              value={preferences.searchQuery}
-              onChange={(e) => onPreferenceChange({ searchQuery: e.target.value })}
-              className="w-full pl-9 pr-4 py-2 text-sm bg-white/80 dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 rounded-full text-slate-950 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-cyan-500 font-sans"
-            />
+      {/* Student Verification Modal */}
+      {showVerifyModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="w-full max-w-md bg-[#0A0A0A] border border-white/10 rounded-3xl p-6 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-2xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                  <ShieldCheck className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Student Verification Hub</h3>
+                  <p className="text-xs text-slate-400">Academic Email Auth</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowVerifyModal(false)}
+                className="p-2 rounded-full bg-slate-900 text-slate-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Enter your college email ending in <span className="font-mono text-blue-400 font-bold">.edu</span> or <span className="font-mono text-blue-400 font-bold">.ac.in</span> to verify student discounts.
+            </p>
+
+            <div className="space-y-3">
+              <input
+                type="email"
+                placeholder="e.g. alex@stanford.edu or student@iitb.ac.in"
+                value={studentEmail}
+                onChange={(e) => setStudentEmail(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleStudentVerify()}
+                className="w-full px-4 py-3 bg-[#101010] border border-white/10 rounded-2xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+              />
+
+              <button
+                onClick={handleStudentVerify}
+                disabled={verifying || !studentEmail.trim()}
+                className="w-full py-3 rounded-2xl bg-blue-600 text-white font-bold text-xs hover:bg-blue-500 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+              >
+                {verifying ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Verifying...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Verify Student Status</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {verifyResult && (
+              <div className={`p-4 rounded-2xl border text-xs space-y-2 ${
+                verifyResult.verified
+                  ? 'bg-blue-950/40 border-blue-500/40 text-blue-300'
+                  : 'bg-rose-950/40 border-rose-500/40 text-rose-300'
+              }`}>
+                <div className="font-bold flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>{verifyResult.verified ? 'Student Status Verified!' : 'Verification Pending'}</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
-
-        {/* Action Controls & UNiDAYS Switcher */}
-        <div className="flex items-center gap-3 w-full md:w-auto justify-end">
-          
-          {/* Sun / Moon Theme Toggle */}
-          <button
-            onClick={() =>
-              onPreferenceChange({
-                theme: preferences.theme === 'dark' ? 'light' : 'dark'
-              })
-            }
-            className="p-2.5 rounded-full bg-slate-200/80 dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-cyan-500 transition-all active:scale-95 shadow-sm"
-            title={`Switch to ${preferences.theme === 'dark' ? 'Light' : 'Dark'} Mode`}
-          >
-            {preferences.theme === 'dark' ? (
-              <Sun className="w-4 h-4 text-amber-400" />
-            ) : (
-              <Moon className="w-4 h-4 text-blue-600" />
-            )}
-          </button>
-
-          {/* Global UNiDAYS Student Mode Toggle */}
-          <button
-            onClick={() => onPreferenceChange({ unidaysActive: !preferences.unidaysActive })}
-            className={`flex items-center gap-2.5 px-4 py-2 rounded-full text-xs font-bold border transition-all active:scale-95 ${
-              preferences.unidaysActive
-                ? 'bg-emerald-500/15 border-emerald-500 text-emerald-700 dark:text-emerald-300 shadow-sm'
-                : 'bg-slate-200/80 dark:bg-slate-900 border-slate-300/80 dark:border-slate-800 text-slate-500 dark:text-slate-400'
-            }`}
-            title="Toggle Verified UNiDAYS Student Pricing & Perks App-Wide"
-          >
-            <GraduationCap className={`w-4 h-4 ${preferences.unidaysActive ? 'text-emerald-600 dark:text-emerald-400 animate-bounce' : 'text-slate-400'}`} />
-            <span className="hidden sm:inline">UNiDAYS Student</span>
-            <span
-              className={`w-8 h-4 rounded-full p-0.5 transition-colors relative ${
-                preferences.unidaysActive ? 'bg-emerald-500' : 'bg-slate-400 dark:bg-slate-700'
-              }`}
-            >
-              <span
-                className={`block w-3 h-3 rounded-full bg-white transition-transform ${
-                  preferences.unidaysActive ? 'translate-x-4' : 'translate-x-0'
-                }`}
-              />
-            </span>
-          </button>
-
-          {/* Pinned Compare Counter Badge */}
-          <button
-            onClick={onOpenCompare}
-            className="relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold bg-slate-200/80 dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 text-slate-950 dark:text-slate-100 hover:border-cyan-500 transition-all active:scale-95 shadow-sm"
-          >
-            <Scale className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
-            <span className="hidden sm:inline">Compare</span>
-            {pinnedCount > 0 && (
-              <span
-                className={`flex items-center justify-center w-5 h-5 rounded-full text-[11px] font-bold bg-cyan-600 dark:bg-cyan-400 text-white dark:text-slate-950 ${
-                  bounce ? 'animate-bounce' : ''
-                }`}
-              >
-                {pinnedCount}
-              </span>
-            )}
-          </button>
-
-          {/* AI Advisor Trigger */}
-          <button
-            onClick={onToggleChat}
-            className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold bg-cyan-600 dark:bg-cyan-500 text-white dark:text-slate-950 hover:bg-cyan-700 dark:hover:bg-cyan-400 transition-all active:scale-95 shadow-sm"
-          >
-            <Zap className="w-4 h-4 text-amber-300 fill-amber-300" />
-            <span className="hidden sm:inline">AI Advisor</span>
-          </button>
-
-        </div>
-      </div>
-    </nav>
+      )}
+    </>
   );
 };

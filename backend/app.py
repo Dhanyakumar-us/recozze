@@ -3,13 +3,19 @@ RECO — Intelligent Laptop Recommendation & Price Forecasting Engine
 FastAPI Backend Application
 """
 
-from fastapi import FastAPI, Query, HTTPException
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+from fastapi import FastAPI, Query, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 
 from database import LAPTOPS_DATA, MARKET_TRENDS_DATA
 from recommendation.engine import rank_laptops
+from recommendation.realtime import realtime_manager, apply_realtime_boosts
 from models.price_predictor import forecast_laptop_price
 from chatbot.advisor import generate_chat_response
 
@@ -29,6 +35,13 @@ app.add_middleware(
 )
 
 
+class TrackEventRequest(BaseModel):
+    session_id: str
+    event_type: str  # view_laptop, filter_change, compare_laptop, search_query
+    laptop_id: Optional[str] = None
+    context: Optional[Dict[str, Any]] = None
+
+
 class RecommendRequest(BaseModel):
     workload: str = "student"
     budget_min: float = 40000
@@ -37,6 +50,7 @@ class RecommendRequest(BaseModel):
     tgp_tier: Optional[str] = None
     unidays_active: bool = False
     search_query: Optional[str] = None
+    session_id: Optional[str] = None
 
 
 class CompareRequest(BaseModel):
@@ -67,9 +81,10 @@ def get_laptops(
     ram_min: int = Query(8, description="Minimum RAM capacity in GB"),
     tgp_tier: Optional[str] = Query(None, description="TGP Tier (thin_light, balanced, unlocked)"),
     unidays_active: bool = Query(False, description="Enable UNiDAYS student pricing"),
-    search: Optional[str] = Query(None, description="Search keyword")
+    search: Optional[str] = Query(None, description="Search keyword"),
+    session_id: Optional[str] = Query(None, description="Session ID for real-time personalization")
 ):
-    """Retrieve filtered and ranked laptops based on hardware & budget criteria."""
+    """Retrieve filtered and ranked laptops based on hardware & budget criteria with optional real-time session boosting."""
     ranked = rank_laptops(
         LAPTOPS_DATA,
         workload=workload,
@@ -80,10 +95,14 @@ def get_laptops(
         unidays_active=unidays_active,
         search_query=search
     )
+    if session_id:
+        ranked = apply_realtime_boosts(ranked, session_id=session_id)
+        
     return {
         "count": len(ranked),
         "workload": workload,
         "unidays_active": unidays_active,
+        "session_id": session_id,
         "laptops": ranked
     }
 
@@ -103,9 +122,27 @@ def get_laptop_detail(laptop_id: str, unidays_active: bool = False):
     return res
 
 
+@app.post("/api/events/track")
+def track_user_event(payload: TrackEventRequest):
+    """Real-Time Interaction Event Ingestion Pipeline Endpoint."""
+    laptop_data = None
+    if payload.laptop_id:
+        laptop_data = next((l for l in LAPTOPS_DATA if l["id"] == payload.laptop_id), None)
+        
+    res = realtime_manager.track_event(
+        session_id=payload.session_id,
+        event_type=payload.event_type,
+        laptop_id=payload.laptop_id,
+        laptop_data=laptop_data,
+        context=payload.context
+    )
+    return res
+
+
 @app.post("/api/recommend")
-def recommend_laptops(payload: RecommendRequest):
-    """POST endpoint for advanced multi-factor laptop ranking."""
+@app.post("/api/recommend/realtime")
+def recommend_laptops_realtime(payload: RecommendRequest):
+    """POST endpoint for multi-factor laptop ranking augmented with real-time session vectors."""
     ranked = rank_laptops(
         LAPTOPS_DATA,
         workload=payload.workload,
@@ -116,12 +153,39 @@ def recommend_laptops(payload: RecommendRequest):
         unidays_active=payload.unidays_active,
         search_query=payload.search_query
     )
+    
+    if payload.session_id:
+        ranked = apply_realtime_boosts(ranked, session_id=payload.session_id)
+
     return {
         "count": len(ranked),
         "workload": payload.workload,
         "unidays_active": payload.unidays_active,
+        "session_id": payload.session_id,
         "laptops": ranked
     }
+
+
+@app.websocket("/ws/recommendations/{session_id}")
+async def websocket_recommendations(websocket: WebSocket, session_id: str):
+    """WebSocket endpoint for real-time recommendation updates stream."""
+    await websocket.accept()
+    try:
+        # Send initial real-time session status
+        session_info = realtime_manager.get_session(session_id) or {}
+        await websocket.send_json({
+            "type": "connection_established",
+            "session_id": session_id,
+            "events_count": len(session_info.get("events", []))
+        })
+        while True:
+            # Keep connection open and listen for client pings or updates
+            data = await websocket.receive_text()
+            if data == "ping":
+                await websocket.send_json({"type": "pong", "session_id": session_id})
+    except WebSocketDisconnect:
+        pass
+
 
 
 @app.get("/api/market-trends")
@@ -177,6 +241,69 @@ def chat_advisor(payload: ChatRequest):
     return generate_chat_response(payload.query, active_laptops)
 
 
+@app.get("/api/currency-rates")
+def get_currency_rates():
+    """Retrieve live multi-currency exchange rates (INR, USD, EUR, GBP, AED, CAD, AUD)."""
+    from services.currency import get_live_exchange_rates
+    return get_live_exchange_rates()
+
+
+@app.get("/api/live-price/{laptop_id}")
+def get_live_laptop_price(laptop_id: str):
+    """Fetch live retailer prices from Amazon/Flipkart via RapidAPI/SerpAPI."""
+    from services.prices import fetch_live_retailer_prices
+    laptop = next((l for l in LAPTOPS_DATA if l["id"] == laptop_id), None)
+    if not laptop:
+        raise HTTPException(status_code=404, detail="Laptop not found")
+    return fetch_live_retailer_prices(laptop["name"], laptop["price_inr"])
+
+
+class StudentVerifyRequest(BaseModel):
+    email: str
+    id_token: Optional[str] = ""
+
+
+@app.post("/api/verify-student")
+def verify_student(payload: StudentVerifyRequest):
+    """Verify student credentials via academic domain or Firebase Auth API."""
+    from services.auth import verify_student_credentials
+    return verify_student_credentials(payload.email, payload.id_token or "")
+
+
+class CopartYardsRequest(BaseModel):
+    query: str = "dallas"
+    api_key: Optional[str] = None
+
+
+@app.post("/api/copart/yards")
+@app.get("/api/copart/yards")
+def get_copart_yards(query: Optional[str] = Query("dallas"), payload: Optional[CopartYardsRequest] = None):
+    """Fetch salvage yards from Copart Salvage Auto Auction API via RapidAPI."""
+    from services.copart import fetch_copart_yards
+    target_query = payload.query if (payload and payload.query) else (query or "dallas")
+    api_key_override = payload.api_key if payload else None
+    return fetch_copart_yards(query=target_query, api_key=api_key_override)
+
+
+@app.get("/api/api-status")
+def get_api_status():
+    """Check connection status of all RECO Platform API keys."""
+    return {
+        "groq_ai": bool(os.getenv("GROQ_API_KEY", "").strip()),
+        "gemini_ai": bool(os.getenv("GEMINI_API_KEY", "").strip()),
+        "openai_ai": bool(os.getenv("OPENAI_API_KEY", "").strip()),
+        "exchange_rate_api": bool(os.getenv("EXCHANGE_RATE_API_KEY", "").strip()),
+        "rapidapi": bool(os.getenv("RAPIDAPI_KEY", "").strip()),
+        "serpapi": bool(os.getenv("SERPAPI_KEY", "").strip()),
+        "keepa_api": bool(os.getenv("KEEPA_API_KEY", "").strip()),
+        "firebase_auth": bool(os.getenv("FIREBASE_API_KEY", "").strip()),
+        "database_url": bool(os.getenv("DATABASE_URL", "").strip()),
+        "supabase_key": bool(os.getenv("SUPABASE_SECRET_KEY", "").strip() or os.getenv("SUPABASE_KEY", "").strip()),
+        "env_file_loaded": True
+    }
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
+

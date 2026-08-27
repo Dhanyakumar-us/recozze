@@ -1,6 +1,25 @@
-import type { Laptop, UserPreferences, MarketTrendsData, ChatResponse } from '../types/laptop';
+import type {
+  Laptop,
+  UserPreferences,
+  MarketTrendsData,
+  ChatResponse,
+  CurrencyType,
+  CurrencyRates,
+  LivePriceResult,
+  StudentVerifyResult,
+  ApiStatusResult
+} from '../types/laptop';
 
 const API_BASE = '/api';
+
+export function getSessionId(): string {
+  let sid = sessionStorage.getItem('reco_session_id');
+  if (!sid) {
+    sid = 'sess_' + Math.random().toString(36).substring(2, 11) + '_' + Date.now();
+    sessionStorage.setItem('reco_session_id', sid);
+  }
+  return sid;
+}
 
 export function mapBackendToLaptop(item: any): Laptop {
   const t = item.thermal || {};
@@ -78,14 +97,17 @@ export function mapBackendToLaptop(item: any): Laptop {
       `Chassis Weight: ${item.weight_kg} kg`,
       `Peak Surface Temp: ${t.peak_surface_temp_c || 42}°C`
     ],
-    calculatedMatchPct: item.calculated_match_pct || 90.0,
+    calculatedMatchPct: item.realtime_score || item.calculated_match_pct || 90.0,
     effectivePriceInr: item.effective_price_inr || item.price_inr,
-    forecast: item.forecast
+    forecast: item.forecast,
+    realtimeBoostReason: item.realtime_boost_reason,
+    realtimeScore: item.realtime_score
   };
 }
 
 export async function fetchLaptops(prefs: UserPreferences): Promise<Laptop[]> {
   try {
+    const sid = getSessionId();
     const params = new URLSearchParams();
     params.append('workload', prefs.workload);
     params.append('budget_min', prefs.budgetMin.toString());
@@ -98,6 +120,7 @@ export async function fetchLaptops(prefs: UserPreferences): Promise<Laptop[]> {
     if (prefs.searchQuery.trim()) {
       params.append('search', prefs.searchQuery.trim());
     }
+    params.append('session_id', sid);
 
     const res = await fetch(`${API_BASE}/laptops?${params.toString()}`);
     if (!res.ok) {
@@ -110,6 +133,78 @@ export async function fetchLaptops(prefs: UserPreferences): Promise<Laptop[]> {
     return getFallbackLaptops(prefs);
   }
 }
+
+export async function trackEventApi(
+  eventType: 'view_laptop' | 'filter_change' | 'compare_laptop' | 'search_query',
+  laptopId?: string,
+  context?: Record<string, any>
+): Promise<void> {
+  try {
+    const sid = getSessionId();
+    await fetch(`${API_BASE}/events/track`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        session_id: sid,
+        event_type: eventType,
+        laptop_id: laptopId,
+        context
+      })
+    });
+  } catch (err) {
+    console.warn('Track event API failed:', err);
+  }
+}
+
+export async function fetchRealtimeRecommendationsApi(prefs: UserPreferences): Promise<Laptop[]> {
+  try {
+    const sid = getSessionId();
+    const res = await fetch(`${API_BASE}/recommend/realtime`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        workload: prefs.workload,
+        budget_min: prefs.budgetMin,
+        budget_max: prefs.budgetMax,
+        ram_min: prefs.minRamGb,
+        tgp_tier: prefs.tgpTier !== 'all' ? prefs.tgpTier : null,
+        unidays_active: prefs.unidaysActive,
+        search_query: prefs.searchQuery,
+        session_id: sid
+      })
+    });
+    if (!res.ok) throw new Error(`API error ${res.status}`);
+    const data = await res.json();
+    return data.laptops.map(mapBackendToLaptop);
+  } catch (err) {
+    console.warn('Real-Time recommendations API failed, falling back to fetchLaptops:', err);
+    return fetchLaptops(prefs);
+  }
+}
+
+export function connectRealtimeWebSocket(onMessage?: (data: any) => void): WebSocket | null {
+  try {
+    const sid = getSessionId();
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws/recommendations/${sid}`;
+    const ws = new WebSocket(wsUrl);
+    
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (onMessage) onMessage(data);
+      } catch (e) {
+        console.error('Failed to parse WebSocket message:', e);
+      }
+    };
+    
+    return ws;
+  } catch (err) {
+    console.warn('Could not establish WebSocket connection:', err);
+    return null;
+  }
+}
+
 
 export async function fetchLaptopDetail(id: string, unidaysActive: boolean): Promise<Laptop> {
   try {
@@ -199,6 +294,129 @@ export async function chatAdvisorApi(query: string, unidaysActive: boolean): Pro
         'Best gaming laptop under ₹1.5 Lakhs?'
       ]
     };
+  }
+}
+
+export async function fetchCurrencyRates(): Promise<CurrencyRates> {
+  try {
+    const res = await fetch(`${API_BASE}/currency-rates`);
+    if (!res.ok) throw new Error(`API error ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.warn('Currency rates API failed, using fallback rates:', err);
+    return {
+      base_currency: 'INR',
+      rates: { INR: 1.0, USD: 0.0115, EUR: 0.0105, GBP: 0.0089, AED: 0.0422, CAD: 0.0162, AUD: 0.0177 },
+      api_source: 'Client Fallback Rates',
+      last_updated: new Date().toISOString()
+    };
+  }
+}
+
+export async function fetchLiveLaptopPrice(id: string): Promise<LivePriceResult> {
+  try {
+    const res = await fetch(`${API_BASE}/live-price/${id}`);
+    if (!res.ok) throw new Error(`API error ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.warn('Live price API failed, using fallback:', err);
+    return {
+      laptop: id,
+      source: 'RECO Pricing Engine',
+      connected_apis: [],
+      is_live_api: false
+    };
+  }
+}
+
+export async function verifyStudentApi(email: string, idToken?: string): Promise<StudentVerifyResult> {
+  try {
+    const res = await fetch(`${API_BASE}/verify-student`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, id_token: idToken || '' })
+    });
+    if (!res.ok) throw new Error(`API error ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.warn('Student verification API failed, using domain fallback:', err);
+    const isEdu = email.endsWith('.edu') || email.endsWith('.ac.in');
+    return {
+      verified: isEdu,
+      email,
+      auth_provider: 'Client Validation',
+      student_discount_active: isEdu,
+      unidays_perks_unlocked: isEdu ? ['7-15% Instant Discount', 'Cashback Voucher'] : []
+    };
+  }
+}
+
+export async function fetchApiStatus(): Promise<ApiStatusResult> {
+  try {
+    const res = await fetch(`${API_BASE}/api-status`);
+    if (!res.ok) throw new Error(`API error ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    return {
+      groq_ai: false,
+      gemini_ai: false,
+      openai_ai: false,
+      exchange_rate_api: false,
+      rapidapi: false,
+      serpapi: false,
+      keepa_api: false,
+      firebase_auth: false,
+      database_url: false,
+      supabase_key: false,
+      env_file_loaded: false
+    };
+  }
+}
+
+export async function searchCopartYards(query: string = "dallas", apiKey?: string): Promise<any> {
+  try {
+    const res = await fetch(`${API_BASE}/copart/yards`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, api_key: apiKey || null })
+    });
+    if (!res.ok) throw new Error(`API error ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.warn('Copart Yards API failed, using fallback:', err);
+    return {
+      status: 'error',
+      message: 'Failed to connect to Copart Salvage API endpoint.',
+      query,
+      data: null
+    };
+  }
+}
+
+export function formatPrice(
+  priceInr: number,
+  currency: CurrencyType = 'INR',
+  rates?: Record<string, number>
+): string {
+  const rate = rates && rates[currency] ? rates[currency] : 1.0;
+  const val = priceInr * (currency === 'INR' ? 1 : rate);
+
+  switch (currency) {
+    case 'USD':
+      return `$${Math.round(val).toLocaleString('en-US')}`;
+    case 'EUR':
+      return `€${Math.round(val).toLocaleString('de-DE')}`;
+    case 'GBP':
+      return `£${Math.round(val).toLocaleString('en-GB')}`;
+    case 'AED':
+      return `AED ${Math.round(val).toLocaleString('en-AE')}`;
+    case 'CAD':
+      return `CA$${Math.round(val).toLocaleString('en-CA')}`;
+    case 'AUD':
+      return `AU$${Math.round(val).toLocaleString('en-AU')}`;
+    case 'INR':
+    default:
+      return `₹${Math.round(priceInr).toLocaleString('en-IN')}`;
   }
 }
 
