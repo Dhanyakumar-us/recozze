@@ -65,9 +65,9 @@ def _call_gemini_ai(api_key: str, query: str, context_str: str) -> Optional[str]
         client = genai.Client(api_key=api_key)
         prompt = (
             "You are RECO AI, an elite hardware engineering assistant and laptop buying advisor.\n"
-            "Answer the user's question concisely using markdown, bold headers, and relevant emojis.\n"
-            "Use the following real-time catalog data when relevant to make specific laptop recommendations:\n\n"
-            f"{context_str}\n\n"
+            "CRITICAL REQUIREMENT: You MUST ONLY answer and recommend laptops using the EXACT PROVIDED LAPTOP DATASET below.\n"
+            "DO NOT invent external laptops or specifications outside of this dataset.\n\n"
+            f"PROVIDED LAPTOP DATASET:\n{context_str}\n\n"
             f"User Question: {query}"
         )
         response = client.models.generate_content(
@@ -82,9 +82,9 @@ def _call_gemini_ai(api_key: str, query: str, context_str: str) -> Optional[str]
             model = ggi.GenerativeModel("gemini-1.5-flash")
             prompt = (
                 "You are RECO AI, an elite hardware engineering assistant and laptop buying advisor.\n"
-                "Answer the user's question concisely using markdown, bold headers, and relevant emojis.\n"
-                "Use the following real-time catalog data when relevant to make specific laptop recommendations:\n\n"
-                f"{context_str}\n\n"
+                "CRITICAL REQUIREMENT: You MUST ONLY answer and recommend laptops using the EXACT PROVIDED LAPTOP DATASET below.\n"
+                "DO NOT invent external laptops or specifications outside of this dataset.\n\n"
+                f"PROVIDED LAPTOP DATASET:\n{context_str}\n\n"
                 f"User Question: {query}"
             )
             res = model.generate_content(prompt)
@@ -105,9 +105,10 @@ def _call_openai_ai(api_key: str, query: str, context_str: str) -> Optional[str]
                 {
                     "role": "system",
                     "content": (
-                        "You are RECO AI, an elite hardware engineering assistant and laptop buying advisor. "
-                        "Answer user questions accurately using markdown, bold text, bullet points, and emojis. "
-                        f"Here is current live catalog context:\n{context_str}"
+                        "You are RECO AI, an elite hardware engineering assistant and laptop buying advisor.\n"
+                        "CRITICAL REQUIREMENT: You MUST ONLY answer and recommend laptops using the EXACT PROVIDED LAPTOP DATASET below.\n"
+                        "DO NOT invent external laptops or specifications outside of this dataset.\n\n"
+                        f"PROVIDED LAPTOP DATASET:\n{context_str}"
                     )
                 },
                 {"role": "user", "content": query}
@@ -147,9 +148,11 @@ def _call_groq_ai(api_key: str, query: str, context_str: str) -> Optional[str]:
                         {
                             "role": "system",
                             "content": (
-                                "You are RECO AI, an elite hardware engineering assistant and laptop buying advisor. "
-                                "Answer user questions accurately using markdown, bold headers, bullet points, and emojis. "
-                                f"Here is real-time laptop catalog context:\n{trimmed_context}"
+                                "You are RECO AI, an elite hardware engineering assistant and laptop buying advisor.\n"
+                                "CRITICAL REQUIREMENT: You MUST ONLY answer and recommend laptops using the EXACT PROVIDED LAPTOP DATASET below.\n"
+                                "DO NOT invent or suggest external laptops or specifications that are not in this dataset.\n"
+                                "Format your response using markdown tables, bold headers, concise bullet points, and emojis.\n\n"
+                                f"PROVIDED LAPTOP DATASET:\n{trimmed_context}"
                             )
                         },
                         {"role": "user", "content": query}
