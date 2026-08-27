@@ -5,7 +5,7 @@ and UNiDAYS discount guides with Gemini / OpenAI Live Generative AI integration 
 """
 
 import os
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
 # Heuristic Knowledge Base Fallback
 HARDWARE_KNOWLEDGE_BASE = [
@@ -58,7 +58,7 @@ HARDWARE_KNOWLEDGE_BASE = [
 ]
 
 
-def _call_gemini_ai(api_key: str, query: str, context_str: str) -> str:
+def _call_gemini_ai(api_key: str, query: str, context_str: str) -> Optional[str]:
     """Call Google Gemini Generative AI API for live hardware advice."""
     try:
         from google import genai
@@ -76,7 +76,6 @@ def _call_gemini_ai(api_key: str, query: str, context_str: str) -> str:
         )
         return response.text
     except Exception as e:
-        # Fallback to google.generativeai standard library if available
         try:
             import google.generativeai as ggi
             ggi.configure(api_key=api_key)
@@ -92,10 +91,10 @@ def _call_gemini_ai(api_key: str, query: str, context_str: str) -> str:
             return res.text
         except Exception as ex:
             print(f"[Gemini AI Error]: {ex}")
-            return f"⚠️ Gemini AI error: {str(ex)}"
+            return None
 
 
-def _call_openai_ai(api_key: str, query: str, context_str: str) -> str:
+def _call_openai_ai(api_key: str, query: str, context_str: str) -> Optional[str]:
     """Call OpenAI API for live hardware advice."""
     try:
         from openai import OpenAI
@@ -115,52 +114,62 @@ def _call_openai_ai(api_key: str, query: str, context_str: str) -> str:
             ],
             max_tokens=400
         )
-        return response.choices[0].message.content or "No response received."
+        return response.choices[0].message.content
     except Exception as e:
         print(f"[OpenAI Error]: {e}")
-        return f"⚠️ OpenAI API error: {str(e)}"
+        return None
 
 
-def _call_groq_ai(api_key: str, query: str, context_str: str) -> str:
+def _call_groq_ai(api_key: str, query: str, context_str: str) -> Optional[str]:
     """Call Groq API (Ultra-Fast Open Weights LLMs) for live hardware advice."""
-    from openai import OpenAI
-    client = OpenAI(
-        api_key=api_key,
-        base_url="https://api.groq.com/openai/v1"
-    )
-    
-    candidate_models = [
-        "llama-3.3-70b-versatile",
-        "llama3-70b-8192",
-        "mixtral-8x7b-32768",
-        "llama-3.1-8b-instant"
-    ]
-    
-    last_err = None
-    for model_name in candidate_models:
-        try:
-            response = client.chat.completions.create(
-                model=model_name,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": (
-                            "You are RECO AI, an elite hardware engineering assistant and laptop buying advisor. "
-                            "Answer user questions accurately using markdown, bold headers, bullet points, and emojis. "
-                            f"Here is real-time laptop catalog context:\n{context_str}"
-                        )
-                    },
-                    {"role": "user", "content": query}
-                ],
-                max_tokens=500
-            )
-            return response.choices[0].message.content or "No response received."
-        except Exception as e:
-            last_err = e
-            print(f"[Groq Model {model_name} Error]: {e}")
-            continue
+    try:
+        from openai import OpenAI
+        client = OpenAI(
+            api_key=api_key,
+            base_url="https://api.groq.com/openai/v1"
+        )
+        
+        candidate_models = [
+            "llama-3.3-70b-versatile",
+            "llama3-70b-8192",
+            "mixtral-8x7b-32768",
+            "llama-3.1-8b-instant"
+        ]
+        
+        for model_name in candidate_models:
+            try:
+                response = client.chat.completions.create(
+                    model=model_name,
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": (
+                                "You are RECO AI, an elite hardware engineering assistant and laptop buying advisor. "
+                                "Answer user questions accurately using markdown, bold headers, bullet points, and emojis. "
+                                f"Here is real-time laptop catalog context:\n{context_str}"
+                            )
+                        },
+                        {"role": "user", "content": query}
+                    ],
+                    max_tokens=500
+                )
+                if response.choices and response.choices[0].message.content:
+                    return response.choices[0].message.content
+            except Exception as e:
+                print(f"[Groq Model {model_name} Error]: {e}")
+                continue
+    except Exception as err:
+        print(f"[Groq Client Error]: {err}")
 
-    return f"⚠️ Groq API error: {str(last_err)}"
+    return None
+
+
+def is_valid_key(key: str) -> bool:
+    """Helper to check if API key is not empty and not a placeholder."""
+    if not key:
+        return False
+    k = key.lower()
+    return not ("your_" in k or "here" in k or "placeholder" in k or "sample" in k)
 
 
 def generate_chat_response(query: str, active_laptops: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -182,55 +191,58 @@ def generate_chat_response(query: str, active_laptops: List[Dict[str, Any]]) -> 
         )
     context_str = "\n".join(laptop_summaries)
 
-    # 1. Check for live Groq API Key (High Speed Llama-3.3-70B)
-    if groq_key:
+    # 1. Try Groq API
+    if is_valid_key(groq_key) and groq_key.startswith("gsk_"):
         ai_response = _call_groq_ai(groq_key, query, context_str)
-        return {
-            "query": query,
-            "topic": "⚡ Groq Llama-3.3 AI Advisor (Ultra-Fast)",
-            "response": ai_response,
-            "api_connected": "Groq Llama-3.3 API",
-            "suggested_prompts": [
-                "Which laptop has the best cooling thermal design?",
-                "Compare top 2 models for local LLM AI inference",
-                "Is UNiDAYS student discount worth it?",
-                "TGP Wattage breakdown for RTX 4070 vs 4080"
-            ]
-        }
+        if ai_response:
+            return {
+                "query": query,
+                "topic": "⚡ Groq Llama-3.3 AI Advisor (Ultra-Fast)",
+                "response": ai_response,
+                "api_connected": "Groq Llama-3.3 API",
+                "suggested_prompts": [
+                    "Which laptop has the best cooling thermal design?",
+                    "Compare top 2 models for local LLM AI inference",
+                    "Is UNiDAYS student discount worth it?",
+                    "TGP Wattage breakdown for RTX 4070 vs 4080"
+                ]
+            }
 
-    # 2. Check for live Gemini API Key
-    if gemini_key:
+    # 2. Try Gemini API
+    if is_valid_key(gemini_key):
         ai_response = _call_gemini_ai(gemini_key, query, context_str)
-        return {
-            "query": query,
-            "topic": "✨ Gemini AI Live Hardware Advisor",
-            "response": ai_response,
-            "api_connected": "Google Gemini API",
-            "suggested_prompts": [
-                "Which laptop has the best cooling thermal design?",
-                "Compare top 2 models for local LLM AI inference",
-                "Is UNiDAYS student discount worth it?",
-                "TGP Wattage breakdown for RTX 4070 vs 4080"
-            ]
-        }
+        if ai_response:
+            return {
+                "query": query,
+                "topic": "✨ Gemini AI Live Hardware Advisor",
+                "response": ai_response,
+                "api_connected": "Google Gemini API",
+                "suggested_prompts": [
+                    "Which laptop has the best cooling thermal design?",
+                    "Compare top 2 models for local LLM AI inference",
+                    "Is UNiDAYS student discount worth it?",
+                    "TGP Wattage breakdown for RTX 4070 vs 4080"
+                ]
+            }
 
-    # 3. Check for live OpenAI API Key
-    if openai_key:
+    # 3. Try OpenAI API
+    if is_valid_key(openai_key):
         ai_response = _call_openai_ai(openai_key, query, context_str)
-        return {
-            "query": query,
-            "topic": "🤖 OpenAI GPT Live Hardware Advisor",
-            "response": ai_response,
-            "api_connected": "OpenAI API",
-            "suggested_prompts": [
-                "Which laptop has the best cooling thermal design?",
-                "Compare top 2 models for local LLM AI inference",
-                "Is UNiDAYS student discount worth it?",
-                "TGP Wattage breakdown for RTX 4070 vs 4080"
-            ]
-        }
+        if ai_response:
+            return {
+                "query": query,
+                "topic": "🤖 OpenAI GPT Live Hardware Advisor",
+                "response": ai_response,
+                "api_connected": "OpenAI API",
+                "suggested_prompts": [
+                    "Which laptop has the best cooling thermal design?",
+                    "Compare top 2 models for local LLM AI inference",
+                    "Is UNiDAYS student discount worth it?",
+                    "TGP Wattage breakdown for RTX 4070 vs 4080"
+                ]
+            }
 
-    # 3. Fallback Heuristic matching rule engine if no API keys are present
+    # 4. Fallback Heuristic matching rule engine
     q_lower = query.lower()
     matched_topic = None
     matched_answer = None
@@ -252,12 +264,12 @@ def generate_chat_response(query: str, active_laptops: List[Dict[str, Any]]) -> 
                 f"🤖 Based on current market evaluation, the **{top_laptop['name']}** is our top recommended choice. "
                 f"It features a **{top_laptop['gpu']} ({top_laptop['tgp_watts']}W TGP)**, {top_laptop['ram_gb']}GB RAM, and a "
                 f"thermal rating of {top_laptop['thermal']['noise_level_db']}dB noise level under peak load.\n\n"
-                "💡 *Tip: Add your `GEMINI_API_KEY` or `OPENAI_API_KEY` to `backend/.env` to enable full Generative AI reasoning!*"
+                "💡 *Tip: Add your `GROQ_API_KEY` or `GEMINI_API_KEY` to `backend/.env` to enable full Generative AI reasoning!*"
             )
         else:
             matched_answer = (
                 "🤖 Ask me anything about GPU TGP Wattage, Thermal Cooling, UNiDAYS Student Discounts, or compare specific laptop models!\n\n"
-                "💡 *Tip: Add your `GEMINI_API_KEY` or `OPENAI_API_KEY` to `backend/.env` to enable live AI responses!*"
+                "💡 *Tip: Add your `GROQ_API_KEY` or `GEMINI_API_KEY` to `backend/.env` to enable live AI responses!*"
             )
 
     return {
