@@ -295,6 +295,7 @@ def get_api_status():
         "exchange_rate_api": bool(os.getenv("EXCHANGE_RATE_API_KEY", "").strip()),
         "rapidapi": bool(os.getenv("RAPIDAPI_KEY", "").strip()),
         "serpapi": bool(os.getenv("SERPAPI_KEY", "").strip()),
+        "rainforest_api": bool(os.getenv("RAINFOREST_API_KEY", "").strip()),
         "keepa_api": bool(os.getenv("KEEPA_API_KEY", "").strip()),
         "firebase_auth": bool(os.getenv("FIREBASE_API_KEY", "").strip()),
         "database_url": bool(os.getenv("DATABASE_URL", "").strip()),
