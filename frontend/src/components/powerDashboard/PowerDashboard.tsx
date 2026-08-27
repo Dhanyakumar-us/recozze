@@ -18,6 +18,7 @@ import { PerformanceChart } from './PerformanceChart';
 import { LaptopDetails } from './LaptopDetails';
 import { RecoInsight } from './RecoInsight';
 import { ComparisonPanel } from './ComparisonPanel';
+import { GroqRatingCard } from './GroqRatingCard';
 import { getLaptopImage } from '../../utils/laptopUtils';
 
 interface PowerDashboardProps {
@@ -150,6 +151,9 @@ export const PowerDashboard: React.FC<PowerDashboardProps> = ({
           ramGb={specDetails.ramGb}
           gpuName={specDetails.gpuName}
         />
+
+        {/* Live Groq AI Rating Prediction & Verdict Card */}
+        <GroqRatingCard laptop={selectedLaptop} />
 
         {/* Side-by-Side Laptop Comparison Panel */}
         <ComparisonPanel laptopA={selectedLaptop} allLaptops={allLaptops} />

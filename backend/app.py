@@ -285,6 +285,16 @@ def get_copart_yards(query: Optional[str] = Query("dallas"), payload: Optional[C
     return fetch_copart_yards(query=target_query, api_key=api_key_override)
 
 
+@app.get("/api/predict-rating/{laptop_id}")
+def predict_laptop_rating(laptop_id: str):
+    """Predict live AI performance rating scores via Groq LLM API."""
+    from services.rating_predictor import predict_laptop_rating_groq
+    laptop = next((l for l in LAPTOPS_DATA if l["id"] == laptop_id), None)
+    if not laptop:
+        raise HTTPException(status_code=404, detail="Laptop not found")
+    return predict_laptop_rating_groq(laptop)
+
+
 @app.get("/api/api-status")
 def get_api_status():
     """Check connection status of all RECO Platform API keys."""
